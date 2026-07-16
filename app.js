@@ -291,66 +291,34 @@
           userRef.collection('metadata').doc('categories').set(state.categories).catch(err => console.error("Error setting categories:", err));
         }
 
-        // 3. Fetch/Create Budgets
+        // 3. Fetch Budgets
         userRef.collection('metadata').doc('budgets').get().then(budgDoc => {
           if (budgDoc.exists) {
             state.budgets = budgDoc.data();
           } else {
-            // Seed default budgets
-            state.budgets = {
-              'Food & Dining': 15000,
-              'Shopping': 10000,
-              'Rent & Bills': 25000,
-              'Entertainment': 8000,
-              'Transportation': 6000
-            };
+            state.budgets = {};
             userRef.collection('metadata').doc('budgets').set(state.budgets).catch(err => console.error("Error setting budgets:", err));
           }
 
           // 4. Fetch Goals
           userRef.collection('goals').get().then(goalsSnapshot => {
+            state.goals = [];
             if (!goalsSnapshot.empty) {
-              state.goals = [];
               goalsSnapshot.forEach(goalDoc => {
                 state.goals.push(goalDoc.data());
-              });
-            } else {
-              // Seed default goals
-              state.goals = [
-                {
-                  id: 'goal-1',
-                  name: 'Emergency Fund',
-                  target: 100000,
-                  saved: 45000,
-                  date: `${new Date().getFullYear()}-12-31`
-                },
-                {
-                  id: 'goal-2',
-                  name: 'New MacBook Pro',
-                  target: 200000,
-                  saved: 80000,
-                  date: `${new Date().getFullYear() + 1}-03-15`
-                }
-              ];
-              // Write to Firestore
-              state.goals.forEach(g => {
-                userRef.collection('goals').doc(g.id).set(g).catch(err => console.error("Error setting goal:", err));
               });
             }
 
             // 5. Fetch Transactions
             userRef.collection('transactions').get().then(txSnapshot => {
+              state.transactions = [];
               if (!txSnapshot.empty) {
-                state.transactions = [];
                 txSnapshot.forEach(txDoc => {
                   state.transactions.push(txDoc.data());
                 });
-                // Finished syncing, boot display!
-                triggerViewRender('dashboard');
-              } else {
-                // Seed mock transactions so user doesn't see a blank page
-                seedDefaultTransactionsToFirestore(userId);
               }
+              // Finished syncing, boot display!
+              triggerViewRender('dashboard');
             }).catch(err => {
               console.error("Error fetching transactions:", err);
               showNotification("Failed to load transactions from cloud.", "error");
@@ -2274,7 +2242,7 @@
     });
 
     document.getElementById('reset-data-btn').addEventListener('click', () => {
-      if (confirm('CAUTION: This will delete ALL transactions, categories, budgets, and goals, and reset to default demo data. Do you want to proceed?')) {
+      if (confirm('CAUTION: This will delete ALL transactions, categories, budgets, and goals, and clear your database. Do you want to proceed?')) {
         state.transactions = [];
         state.budgets = {};
         state.goals = [];
@@ -2295,15 +2263,12 @@
           // Reset settings docs
           userRef.collection('metadata').doc('categories').set(state.categories);
           userRef.collection('metadata').doc('budgets').set(state.budgets);
-
-          // Seed demo again
-          seedDefaultTransactionsToFirestore(currentUser.uid);
         }
 
         applyTheme();
         const currentActiveView = document.querySelector('.nav-item.active').getAttribute('data-view');
         triggerViewRender(currentActiveView);
-        showNotification('Database reset to initial demo state.', 'warning');
+        showNotification('Database cleared successfully.', 'warning');
       }
     });
 
