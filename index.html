@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aura | Premium Expense Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Firebase Compatibility SDK CDNs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <!-- Server-Side Firebase Configuration -->
+  <script src="firebase-config.js"></script>
+</head>
+<body>
+
+
+  <!-- VIEW: AUTHENTICATION (LOGIN / REGISTER) -->
+  <div id="auth-container" class="auth-page-wrapper" style="display: none;">
+    <div class="auth-card">
+      <div class="auth-card-header">
+        <div class="auth-card-logo">A</div>
+        <h2 class="auth-card-title" id="auth-main-title">Welcome to Aura</h2>
+        <p class="auth-card-subtitle" id="auth-main-subtitle">Sign in to track your metrics and goals.</p>
+      </div>
+
+      <!-- Auth Option Tabs -->
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tab-login-btn">Log In</div>
+        <div class="auth-tab" id="tab-register-btn">Register</div>
+      </div>
+
+      <!-- Auth Form Container -->
+      <div class="auth-form-container">
+        <!-- Google Sign-In button -->
+        <button class="btn-google-signin" id="auth-google-btn">
+          <svg viewBox="0 0 48 48">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.5 24c0-1.55-.15-3.24-.47-4.77H24v9.03h12.75c-.55 2.83-2.14 5.22-4.53 6.81l7.02 5.44C43.36 36.57 46.5 30.86 46.5 24z"/>
+            <path fill="#FBBC05" d="M10.54 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.98-6.19z"/>
+            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.02-5.44c-1.95 1.3-4.45 2.1-8.87 2.1-6.26 0-11.57-4.22-13.46-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+          </svg>
+          <span>Continue with Google</span>
+        </button>
+
+        <div class="auth-divider">or email</div>
+
+        <div class="form-group">
+          <label for="auth-email-input">Email Address</label>
+          <input type="email" class="input-field-noicon" id="auth-email-input" placeholder="name@domain.com">
+        </div>
+
+        <div class="form-group">
+          <label for="auth-password-input">Password</label>
+          <input type="password" class="input-field-noicon" id="auth-password-input" placeholder="••••••••">
+        </div>
+
+        <button class="btn btn-primary" id="auth-submit-btn" style="margin-top: 0.5rem;">Log In</button>
+        
+        <div class="setup-status-box error" id="auth-error-box">Authentication error here.</div>
+        
+
+      </div>
+    </div>
+  </div>
+
+  <div id="app-container" style="display: none;">
+    
+    <!-- Sidebar Navigation -->
+    <aside>
+      <div class="logo-container">
+        <div class="logo-icon">A</div>
+        <div class="logo-text">Aura</div>
+      </div>
+      
+      <nav>
+        <div class="nav-item active" data-view="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </div>
+        <div class="nav-item" data-view="transactions">
+          <i data-lucide="arrow-left-right"></i>
+          <span>Transactions</span>
+        </div>
+        <div class="nav-item" data-view="budgets">
+          <i data-lucide="pie-chart"></i>
+          <span>Budgets & Goals</span>
+        </div>
+        <div class="nav-item" data-view="reports">
+          <i data-lucide="trending-up"></i>
+          <span>Reports & Insights</span>
+        </div>
+        <div class="nav-item" data-view="settings">
+          <i data-lucide="settings"></i>
+          <span>Settings</span>
+        </div>
+      </nav>
+      <!-- Profile Panel in Sidebar -->
+      <div class="sidebar-user-panel">
+        <div class="sidebar-user-info">
+          <div class="user-avatar" id="sidebar-avatar">S</div>
+          <div class="user-details">
+            <span class="user-name" id="sidebar-username">Saurabh Pandey</span>
+            <span class="user-role" id="sidebar-user-email">Premium Member</span>
+          </div>
+        </div>
+        <button class="btn-signout" id="sidebar-logout-btn">
+          <i data-lucide="log-out"></i>
+          <span>Sign Out</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main>
+      <header>
+        <div class="welcome-msg">
+          <h1 id="welcome-title">Hello, Saurabh</h1>
+          <p id="welcome-subtitle">Here is your financial overview for this month.</p>
+        </div>
+        
+        <div class="header-actions">
+          <!-- Theme Toggle Button -->
+          <button class="btn btn-secondary btn-icon" id="theme-toggle-btn" title="Toggle Theme">
+            <i data-lucide="sun"></i>
+          </button>
+          
+          <!-- Add Transaction Quick Trigger -->
+          <button class="btn btn-primary" id="quick-add-transaction-btn">
+            <i data-lucide="plus"></i>
+            <span>Add Transaction</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- VIEW: DASHBOARD -->
+      <section id="view-dashboard" class="view-section active">
+        <!-- Overview Cards -->
+        <div class="stats-grid">
+          <div class="glass-panel stat-card" style="--card-accent: var(--accent-color); --card-glow: var(--accent-glow);">
+            <div class="stat-header">
+              <span>Net Balance</span>
+              <div class="stat-icon-wrapper">
+                <i data-lucide="wallet"></i>
+              </div>
+            </div>
+            <div class="stat-value" id="dashboard-net-balance">$0.00</div>
+            <div class="stat-change" id="dashboard-balance-change">
+              <i data-lucide="info"></i>
+              <span>Total Available Fund</span>
+            </div>
+          </div>
+          
+          <div class="glass-panel stat-card" style="--card-accent: var(--color-income); --card-glow: var(--color-income-glow);">
+            <div class="stat-header">
+              <span>Total Income</span>
+              <div class="stat-icon-wrapper">
+                <i data-lucide="arrow-down-left"></i>
+              </div>
+            </div>
+            <div class="stat-value" id="dashboard-total-income">$0.00</div>
+            <div class="stat-change up" id="dashboard-income-change">
+              <i data-lucide="trending-up"></i>
+              <span>+0% vs last month</span>
+            </div>
+          </div>
+          
+          <div class="glass-panel stat-card" style="--card-accent: var(--color-expense); --card-glow: var(--color-expense-glow);">
+            <div class="stat-header">
+              <span>Total Expenses</span>
+              <div class="stat-icon-wrapper">
+                <i data-lucide="arrow-up-right"></i>
+              </div>
+            </div>
+            <div class="stat-value" id="dashboard-total-expenses">$0.00</div>
+            <div class="stat-change down" id="dashboard-expense-change">
+              <i data-lucide="trending-down"></i>
+              <span>+0% vs last month</span>
+            </div>
+          </div>
+          
+          <div class="glass-panel stat-card" style="--card-accent: var(--color-warning); --card-glow: var(--color-warning-glow);">
+            <div class="stat-header">
+              <span>Savings Rate</span>
+              <div class="stat-icon-wrapper">
+                <i data-lucide="piggy-bank"></i>
+              </div>
+            </div>
+            <div class="stat-value" id="dashboard-savings-rate">0%</div>
+            <div class="stat-change" id="dashboard-savings-status">
+              <i data-lucide="activity"></i>
+              <span>Target rate: 20%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Charts Row -->
+        <div class="charts-grid">
+          <div class="glass-panel chart-card">
+            <div class="chart-header">
+              <h3 class="chart-title">Expense & Income Flow</h3>
+              <select class="input-field-noicon" id="dashboard-chart-period" style="width: auto; padding: 0.4rem 2rem 0.4rem 0.75rem;">
+                <option value="weekly">Weekly View</option>
+                <option value="monthly" selected>Monthly View</option>
+              </select>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="flowChart"></canvas>
+            </div>
+          </div>
+          
+          <div class="glass-panel chart-card">
+            <div class="chart-header">
+              <h3 class="chart-title">Expenses by Category</h3>
+            </div>
+            <div class="chart-wrapper">
+              <canvas id="categoryChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recent Transactions & Budgets Grid -->
+        <div class="dashboard-details-grid">
+          <div class="glass-panel section-card">
+            <div class="section-header">
+              <h3 class="section-title">Recent Transactions</h3>
+              <button class="btn btn-secondary btn-icon" id="dashboard-view-all-transactions" title="View All Transactions" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                View All
+              </button>
+            </div>
+            <div class="transactions-list-compact" id="dashboard-recent-transactions">
+              <!-- Rendered Dynamically -->
+            </div>
+          </div>
+          
+          <div class="glass-panel section-card">
+            <div class="section-header">
+              <h3 class="section-title">Active Budgets</h3>
+              <button class="btn btn-secondary btn-icon" id="dashboard-view-all-budgets" title="View All Budgets" style="padding: 0.4rem 0.75rem; font-size: 0.85rem;">
+                Manage
+              </button>
+            </div>
+            <div class="transactions-list-compact" id="dashboard-active-budgets" style="gap: 1.1rem;">
+              <!-- Rendered Dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: TRANSACTIONS -->
+      <section id="view-transactions" class="view-section">
+        <div class="glass-panel" style="margin-bottom: 1.5rem;">
+          <div class="filters-bar">
+            <!-- Search bar -->
+            <div class="search-input-wrapper">
+              <i data-lucide="search"></i>
+              <input type="text" class="input-field" id="tx-search-input" placeholder="Search transactions...">
+            </div>
+            
+            <!-- Type Filter -->
+            <select class="input-field-noicon" id="tx-filter-type" style="width: auto; min-width: 120px;">
+              <option value="all">All Types</option>
+              <option value="income">Income</option>
+              <option value="expense">Expense</option>
+            </select>
+            
+            <!-- Category Filter -->
+            <select class="input-field-noicon" id="tx-filter-category" style="width: auto; min-width: 150px;">
+              <option value="all">All Categories</option>
+              <!-- Populated dynamically -->
+            </select>
+            
+            <!-- Date range inputs -->
+            <div class="date-range-group">
+              <input type="date" class="input-field-noicon" id="tx-filter-start-date" style="width: auto;">
+              <span>to</span>
+              <input type="date" class="input-field-noicon" id="tx-filter-end-date" style="width: auto;">
+            </div>
+
+            <!-- Export to CSV button -->
+            <button class="btn btn-secondary" id="tx-export-csv-btn">
+              <i data-lucide="download"></i>
+              <span>Export CSV</span>
+            </button>
+          </div>
+
+          <div class="table-container">
+            <table class="transactions-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Transaction</th>
+                  <th>Category</th>
+                  <th>Payment Method</th>
+                  <th style="text-align: right;">Amount</th>
+                  <th style="text-align: center; width: 100px;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="transactions-table-body">
+                <!-- Dynamically filled -->
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Pagination -->
+          <div class="pagination-container">
+            <div class="pagination-info" id="tx-pagination-info">
+              Showing 1 to 10 of 0 entries
+            </div>
+            <div class="pagination-buttons">
+              <button class="btn btn-secondary" id="tx-prev-page-btn" style="padding: 0.5rem 1rem; font-size: 0.85rem;"><i data-lucide="chevron-left"></i> Prev</button>
+              <button class="btn btn-secondary" id="tx-next-page-btn" style="padding: 0.5rem 1rem; font-size: 0.85rem;">Next <i data-lucide="chevron-right"></i></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: BUDGETS & GOALS -->
+      <section id="view-budgets" class="view-section">
+        <!-- Budgets Manager Section -->
+        <div class="section-header" style="margin-bottom: 1.5rem;">
+          <h2 class="section-title" style="font-size: 1.5rem;">Category Budgets</h2>
+          <button class="btn btn-primary" id="add-budget-trigger-btn">
+            <i data-lucide="plus"></i>
+            <span>Set Budget</span>
+          </button>
+        </div>
+        <div class="budget-grid" id="budgets-card-grid">
+          <!-- Rendered Dynamically -->
+        </div>
+
+        <!-- Savings Goals Section -->
+        <div class="section-header" style="margin-top: 3rem; margin-bottom: 1.5rem;">
+          <h2 class="section-title" style="font-size: 1.5rem;">Savings Goals</h2>
+          <button class="btn btn-primary" id="add-goal-trigger-btn">
+            <i data-lucide="plus"></i>
+            <span>Create Goal</span>
+          </button>
+        </div>
+        <div class="goals-grid" id="goals-card-grid">
+          <!-- Rendered Dynamically -->
+        </div>
+      </section>
+
+      <!-- VIEW: REPORTS & INSIGHTS -->
+      <section id="view-reports" class="view-section">
+        <div class="reports-layout">
+          <!-- Charts row -->
+          <div class="reports-charts-row">
+            <div class="glass-panel chart-card">
+              <div class="chart-header">
+                <h3 class="chart-title">Income vs Expenses Analysis</h3>
+                <select class="input-field-noicon" id="reports-chart-year" style="width: auto; padding: 0.4rem 2rem 0.4rem 0.75rem;">
+                  <!-- Dynamically fill years -->
+                  <option value="2026" selected>2026</option>
+                  <option value="2025">2025</option>
+                </select>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="reportsAnalysisChart"></canvas>
+              </div>
+            </div>
+            
+            <div class="glass-panel chart-card">
+              <div class="chart-header">
+                <h3 class="chart-title">Monthly Expense Category Breakdown</h3>
+                <select class="input-field-noicon" id="reports-breakdown-month" style="width: auto; padding: 0.4rem 2rem 0.4rem 0.75rem;">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+              <div class="chart-wrapper">
+                <canvas id="reportsBreakdownChart"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <!-- Dynamic AI Insights Panel -->
+          <div class="glass-panel section-card">
+            <div class="section-header">
+              <h3 class="section-title">Aura Financial Insights</h3>
+              <i data-lucide="sparkles" style="color: var(--accent-color);"></i>
+            </div>
+            <div class="insights-panel" id="insights-container">
+              <!-- Rendered Dynamically -->
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIEW: SETTINGS -->
+      <section id="view-settings" class="view-section">
+        <div class="settings-container">
+          <!-- Left settings panel -->
+          <div class="glass-panel settings-card">
+            <h3 class="section-title">Profile Settings</h3>
+            
+            <div class="settings-row">
+              <label for="settings-username-input">Full Name</label>
+              <input type="text" class="input-field-noicon" id="settings-username-input" value="Saurabh Pandey">
+            </div>
+
+            <div class="settings-row">
+              <label for="settings-currency-select">Preferred Currency</label>
+              <select class="input-field-noicon" id="settings-currency-select">
+                <option value="USD">USD ($)</option>
+                <option value="INR">INR (₹)</option>
+                <option value="EUR">EUR (€)</option>
+                <option value="GBP">GBP (£)</option>
+                <option value="JPY">JPY (¥)</option>
+              </select>
+            </div>
+
+            <div class="settings-row">
+              <label>Accent Theme Color</label>
+              <div class="color-grid">
+                <!-- Hues: Indigo (250), Emerald (150), Rose (350), Amber (40), Purple (280), Cyan (190) -->
+                <div class="color-option active" data-hue="250" style="background-color: hsl(250, 85%, 60%);" title="Indigo"></div>
+                <div class="color-option" data-hue="150" style="background-color: hsl(150, 75%, 45%);" title="Emerald"></div>
+                <div class="color-option" data-hue="350" style="background-color: hsl(350, 85%, 60%);" title="Rose"></div>
+                <div class="color-option" data-hue="40" style="background-color: hsl(40, 90%, 50%);" title="Amber"></div>
+                <div class="color-option" data-hue="280" style="background-color: hsl(280, 80%, 60%);" title="Purple"></div>
+                <div class="color-option" data-hue="190" style="background-color: hsl(190, 85%, 45%);" title="Cyan"></div>
+              </div>
+            </div>
+
+            <div class="settings-row" style="margin-top: 1rem;">
+              <button class="btn btn-primary" id="save-profile-settings-btn" style="align-self: flex-start;">
+                Save Profile Changes
+              </button>
+            </div>
+          </div>
+
+          <!-- Right settings panel: Categories & Data -->
+          <div class="glass-panel settings-card">
+            <h3 class="section-title">Manage Custom Categories</h3>
+            
+            <div class="settings-row">
+              <label>Income Categories</label>
+              <div class="category-manager-list" id="income-categories-list">
+                <!-- Dynamically Rendered -->
+              </div>
+              <div class="input-group-row">
+                <input type="text" class="input-field-noicon" id="new-income-category-input" placeholder="New Income category...">
+                <button class="btn btn-primary btn-icon" id="add-income-cat-btn"><i data-lucide="plus"></i></button>
+              </div>
+            </div>
+
+            <div class="settings-row" style="margin-top: 1rem; border-top: 1px solid var(--border-glass); padding-top: 1.5rem;">
+              <label>Expense Categories</label>
+              <div class="category-manager-list" id="expense-categories-list">
+                <!-- Dynamically Rendered -->
+              </div>
+              <div class="input-group-row">
+                <input type="text" class="input-field-noicon" id="new-expense-category-input" placeholder="New Expense category...">
+                <button class="btn btn-primary btn-icon" id="add-expense-cat-btn"><i data-lucide="plus"></i></button>
+              </div>
+            </div>
+
+            <div class="settings-row" style="margin-top: 1.5rem; border-top: 1px solid var(--border-glass); padding-top: 1.5rem;">
+              <label>Data Management</label>
+              <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem;">
+                Back up your entire application data as a JSON file or restore from a previous backup.
+              </p>
+              <div class="settings-backup-buttons">
+                <button class="btn btn-secondary" id="backup-data-btn">
+                  <i data-lucide="upload"></i>
+                  <span>Export JSON</span>
+                </button>
+                <button class="btn btn-secondary" id="restore-data-trigger-btn">
+                  <i data-lucide="download"></i>
+                  <span>Import JSON</span>
+                </button>
+                <input type="file" id="restore-data-file-input" style="display: none;" accept=".json">
+              </div>
+              
+              <button class="btn btn-danger" id="reset-data-btn" style="margin-top: 1rem; align-self: flex-start;">
+                <i data-lucide="trash-2"></i>
+                <span>Reset Database</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: ADD/EDIT TRANSACTION -->
+  <div class="modal-overlay" id="transaction-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="transaction-modal-title">Add Transaction</h3>
+        <button class="modal-close" data-close-modal="transaction-modal">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <input type="hidden" id="tx-modal-id">
+        
+        <!-- Toggle Type -->
+        <div class="form-toggle">
+          <div class="form-toggle-option active" data-type="expense">Expense</div>
+          <div class="form-toggle-option" data-type="income">Income</div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tx-modal-amount">Amount</label>
+            <input type="number" step="0.01" min="0.01" class="input-field-noicon" id="tx-modal-amount" placeholder="0.00" required>
+          </div>
+          <div class="form-group">
+            <label for="tx-modal-date">Date</label>
+            <input type="date" class="input-field-noicon" id="tx-modal-date" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tx-modal-category">Category</label>
+            <select class="input-field-noicon" id="tx-modal-category" required>
+              <!-- Options loaded dynamically -->
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="tx-modal-method">Payment Method</label>
+            <select class="input-field-noicon" id="tx-modal-method" required>
+              <option value="Cash">Cash</option>
+              <option value="Credit Card">Credit Card</option>
+              <option value="Debit Card">Debit Card</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="UPI / Wallet">UPI / Wallet</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="tx-modal-desc">Description</label>
+          <input type="text" class="input-field-noicon" id="tx-modal-desc" placeholder="e.g. Weekly Groceries" required>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="transaction-modal">Cancel</button>
+        <button class="btn btn-primary" id="save-transaction-btn">Save Transaction</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SET BUDGET -->
+  <div class="modal-overlay" id="budget-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="budget-modal-title">Set Monthly Category Budget</h3>
+        <button class="modal-close" data-close-modal="budget-modal">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="budget-modal-category">Category</label>
+          <select class="input-field-noicon" id="budget-modal-category" required>
+            <!-- Loaded dynamically from expense categories -->
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="budget-modal-amount">Monthly Budget Limit</label>
+          <input type="number" step="1" min="1" class="input-field-noicon" id="budget-modal-amount" placeholder="e.g. 500" required>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="budget-modal">Cancel</button>
+        <button class="btn btn-primary" id="save-budget-btn">Apply Budget</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE SAVINGS GOAL -->
+  <div class="modal-overlay" id="goal-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="goal-modal-title">Create Savings Goal</h3>
+        <button class="modal-close" data-close-modal="goal-modal">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <input type="hidden" id="goal-modal-id">
+        <div class="form-group">
+          <label for="goal-modal-name">Goal Name</label>
+          <input type="text" class="input-field-noicon" id="goal-modal-name" placeholder="e.g. Tesla Model 3 / Vacation" required>
+        </div>
+        
+        <div class="form-row">
+          <div class="form-group">
+            <label for="goal-modal-target">Target Amount</label>
+            <input type="number" step="1" min="1" class="input-field-noicon" id="goal-modal-target" placeholder="e.g. 10000" required>
+          </div>
+          <div class="form-group">
+            <label for="goal-modal-saved">Initially Saved</label>
+            <input type="number" step="1" min="0" class="input-field-noicon" id="goal-modal-saved" value="0" required>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="goal-modal-date">Target Date</label>
+          <input type="date" class="input-field-noicon" id="goal-modal-date" required>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="goal-modal">Cancel</button>
+        <button class="btn btn-primary" id="save-goal-btn">Create Goal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Banner -->
+  <div class="notification-banner" id="notification-banner">
+    <div class="notification-icon">
+      <i data-lucide="info"></i>
+    </div>
+    <div class="notification-text" id="notification-text">Notification message here</div>
+  </div>
+
+  <!-- Main JavaScript App -->
+  <script src="app.js"></script>
+</body>
+</html>
