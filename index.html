@@ -9,6 +9,9 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- jsPDF & AutoTable CDNs for PDF export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
   <!-- Firebase Compatibility SDK CDNs -->
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
@@ -285,6 +288,12 @@
             <button class="btn btn-secondary" id="tx-export-csv-btn">
               <i data-lucide="download"></i>
               <span>Export CSV</span>
+            </button>
+
+            <!-- Export as PDF button -->
+            <button class="btn btn-secondary" id="tx-export-pdf-btn">
+              <i data-lucide="file-text"></i>
+              <span>Export PDF</span>
             </button>
           </div>
 

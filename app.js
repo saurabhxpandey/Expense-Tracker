@@ -2158,7 +2158,7 @@
 
   // --- Export/Import Services ---
   function exportTransactionsToCSV() {
-    const txs = state.transactions;
+    const txs = txPagination.filteredList.length > 0 ? txPagination.filteredList : state.transactions;
     if (txs.length === 0) {
       showNotification('No transactions to export.', 'error');
       return;
@@ -2167,12 +2167,31 @@
     const cur = state.profile.currency;
     let csvContent = `Date,Description,Category,Type,Payment Method,Amount (${cur})\n`;
 
+    // Calculate Totals
+    let totalIncome = 0;
+    let totalExpense = 0;
+    txs.forEach(t => {
+      if (t.type === 'income') {
+        totalIncome += t.amount;
+      } else {
+        totalExpense += t.amount;
+      }
+    });
+    const netBalance = totalIncome - totalExpense;
+
     const sorted = [...txs].sort((a,b) => b.date.localeCompare(a.date));
 
     sorted.forEach(t => {
       const cleanDesc = t.description.replace(/"/g, '""');
       csvContent += `"${t.date}","${cleanDesc}","${t.category}","${t.type}","${t.method}",${t.amount}\n`;
     });
+
+    // Append calculated totals summary at the end
+    csvContent += `\n`;
+    csvContent += `"Summary","","","","",""\n`;
+    csvContent += `"Total Income","","","","",${totalIncome}\n`;
+    csvContent += `"Total Expenses","","","","",${totalExpense}\n`;
+    csvContent += `"Net Balance","","","","",${netBalance}\n`;
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -2184,6 +2203,137 @@
     link.click();
     document.body.removeChild(link);
     showNotification('Transactions downloaded as CSV.', 'success');
+  }
+
+  function exportTransactionsToPDF() {
+    const txs = txPagination.filteredList.length > 0 ? txPagination.filteredList : state.transactions;
+    if (txs.length === 0) {
+      showNotification('No transactions to export.', 'error');
+      return;
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const curSymbol = getCurrencySymbol();
+
+    // Calculate Totals
+    let totalIncome = 0;
+    let totalExpense = 0;
+    txs.forEach(t => {
+      if (t.type === 'income') {
+        totalIncome += t.amount;
+      } else {
+        totalExpense += t.amount;
+      }
+    });
+    const netBalance = totalIncome - totalExpense;
+
+    // Premium PDF Header / Branding
+    doc.setFillColor(15, 23, 42); // slate 900
+    doc.rect(0, 0, 210, 40, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(22);
+    doc.text("Aura", 15, 25);
+
+    doc.setFont("Helvetica", "normal");
+    doc.setFontSize(12);
+    doc.text("Premium Financial Report", 35, 25);
+
+    doc.setFontSize(10);
+    const dateStr = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
+    doc.text(`Generated on: ${dateStr}`, 140, 25);
+
+    // Summary Totals Section
+    doc.setTextColor(15, 23, 42);
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text("Financial Summary", 15, 55);
+
+    // Total Income Box
+    doc.setFillColor(240, 253, 244); // light green
+    doc.rect(15, 62, 55, 22, 'F');
+    doc.setDrawColor(16, 185, 129); // emerald
+    doc.rect(15, 62, 55, 22, 'D');
+    doc.setFont("Helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(6, 95, 70);
+    doc.text("Total Income", 20, 70);
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(formatCurrency(totalIncome), 20, 78);
+
+    // Total Expenses Box
+    doc.setFillColor(254, 242, 242); // light red
+    doc.rect(77, 62, 55, 22, 'F');
+    doc.setDrawColor(239, 68, 68); // rose
+    doc.rect(77, 62, 55, 22, 'D');
+    doc.setFont("Helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(153, 27, 27);
+    doc.text("Total Expenses", 82, 70);
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(12);
+    doc.text(formatCurrency(totalExpense), 82, 78);
+
+    // Net Balance Box
+    doc.setFillColor(240, 249, 255); // light blue
+    doc.rect(140, 62, 55, 22, 'F');
+    doc.setDrawColor(59, 130, 246); // blue
+    doc.rect(140, 62, 55, 22, 'D');
+    doc.setFont("Helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(30, 58, 138);
+    doc.text("Net Balance", 145, 70);
+    doc.setFont("Helvetica", "bold");
+    doc.setFontSize(12);
+    doc.setTextColor(netBalance >= 0 ? 30 : 153, netBalance >= 0 ? 58 : 27, netBalance >= 0 ? 138 : 27);
+    doc.text(formatCurrency(netBalance), 145, 78);
+
+    // Draw Transactions Table using autoTable
+    const columns = [
+      { header: 'Date', dataKey: 'date' },
+      { header: 'Description', dataKey: 'description' },
+      { header: 'Category', dataKey: 'category' },
+      { header: 'Type', dataKey: 'type' },
+      { header: 'Payment Method', dataKey: 'method' },
+      { header: `Amount (${curSymbol})`, dataKey: 'amount' }
+    ];
+
+    const sorted = [...txs].sort((a,b) => b.date.localeCompare(a.date));
+    const rows = sorted.map(t => ({
+      date: formatDate(t.date),
+      description: t.description,
+      category: t.category,
+      type: t.type.toUpperCase(),
+      method: t.method,
+      amount: `${t.type === 'income' ? '+' : '-'}${formatCurrency(t.amount)}`
+    }));
+
+    doc.autoTable({
+      columns: columns,
+      body: rows,
+      startY: 95,
+      theme: 'striped',
+      headStyles: {
+        fillColor: [15, 23, 42],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 10
+      },
+      bodyStyles: {
+        fontSize: 9
+      },
+      columnStyles: {
+        amount: { halign: 'right' }
+      },
+      margin: { left: 15, right: 15 }
+    });
+
+    doc.save(`aura_report_${new Date().toISOString().split('T')[0]}.pdf`);
+    showNotification('Transactions report downloaded as PDF.', 'success');
   }
 
   function backupData() {
@@ -2335,6 +2485,7 @@
     });
 
     document.getElementById('tx-export-csv-btn').addEventListener('click', exportTransactionsToCSV);
+    document.getElementById('tx-export-pdf-btn').addEventListener('click', exportTransactionsToPDF);
 
     document.getElementById('save-profile-settings-btn').addEventListener('click', () => {
       const name = document.getElementById('settings-username-input').value.trim();
