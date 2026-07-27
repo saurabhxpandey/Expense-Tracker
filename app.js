@@ -261,14 +261,39 @@
 
   // --- Firestore Syncing Service ---
   
+  function preprocessTransactionDates() {
+    state.transactions.forEach(t => {
+      if (t.date && !t.parsedYear) {
+        const parts = t.date.split('-');
+        if (parts.length === 3) {
+          t.parsedYear = parseInt(parts[0], 10);
+          t.parsedMonth = parseInt(parts[1], 10) - 1; // 0-indexed to match JS Date
+          t.parsedDay = parseInt(parts[2], 10);
+        }
+      }
+    });
+  }
+
   // High-performance real-time user database syncer
   function syncUserData(userId) {
     const userRef = firestoreInstance.collection('users').doc(userId);
     
-    // 1. Fetch Profile Data
-    userRef.get().then(doc => {
-      if (doc.exists) {
-        state.profile = doc.data();
+    const profilePromise = userRef.get();
+    const categoriesPromise = userRef.collection('metadata').doc('categories').get();
+    const budgetsPromise = userRef.collection('metadata').doc('budgets').get();
+    const goalsPromise = userRef.collection('goals').get();
+    const transactionsPromise = userRef.collection('transactions').get();
+
+    Promise.all([
+      profilePromise,
+      categoriesPromise,
+      budgetsPromise,
+      goalsPromise,
+      transactionsPromise
+    ]).then(([profileDoc, catDoc, budgDoc, goalsSnapshot, txSnapshot]) => {
+      // 1. Process Profile
+      if (profileDoc.exists) {
+        state.profile = profileDoc.data();
         applyTheme();
       } else {
         // Save initial default profile
@@ -281,68 +306,48 @@
         userRef.set(state.profile).catch(err => console.error("Error setting profile:", err));
       }
 
-      // 2. Fetch/Create Custom Categories list
-      userRef.collection('metadata').doc('categories').get().then(catDoc => {
-        if (catDoc.exists) {
-          state.categories = catDoc.data();
-        } else {
-          // Initialize defaults
-          state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
-          userRef.collection('metadata').doc('categories').set(state.categories).catch(err => console.error("Error setting categories:", err));
-        }
+      // 2. Process Categories
+      if (catDoc.exists) {
+        state.categories = catDoc.data();
+      } else {
+        // Initialize defaults
+        state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+        userRef.collection('metadata').doc('categories').set(state.categories).catch(err => console.error("Error setting categories:", err));
+      }
 
-        // 3. Fetch Budgets
-        userRef.collection('metadata').doc('budgets').get().then(budgDoc => {
-          if (budgDoc.exists) {
-            state.budgets = budgDoc.data();
-          } else {
-            state.budgets = {};
-            userRef.collection('metadata').doc('budgets').set(state.budgets).catch(err => console.error("Error setting budgets:", err));
-          }
+      // 3. Process Budgets
+      if (budgDoc.exists) {
+        state.budgets = budgDoc.data();
+      } else {
+        state.budgets = {};
+        userRef.collection('metadata').doc('budgets').set(state.budgets).catch(err => console.error("Error setting budgets:", err));
+      }
 
-          // 4. Fetch Goals
-          userRef.collection('goals').get().then(goalsSnapshot => {
-            state.goals = [];
-            if (!goalsSnapshot.empty) {
-              goalsSnapshot.forEach(goalDoc => {
-                state.goals.push(goalDoc.data());
-              });
-            }
-
-            // 5. Fetch Transactions
-            userRef.collection('transactions').get().then(txSnapshot => {
-              state.transactions = [];
-              if (!txSnapshot.empty) {
-                txSnapshot.forEach(txDoc => {
-                  state.transactions.push(txDoc.data());
-                });
-              }
-              // Finished syncing, boot display!
-              triggerViewRender('dashboard');
-            }).catch(err => {
-              console.error("Error fetching transactions:", err);
-              showNotification("Failed to load transactions from cloud.", "error");
-              triggerViewRender('dashboard');
-            });
-
-          }).catch(err => {
-            console.error("Error fetching goals:", err);
-            showNotification("Failed to load savings goals.", "error");
-          });
-
-        }).catch(err => {
-          console.error("Error fetching budgets:", err);
-          showNotification("Failed to load budgets.", "error");
+      // 4. Process Goals
+      state.goals = [];
+      if (!goalsSnapshot.empty) {
+        goalsSnapshot.forEach(goalDoc => {
+          state.goals.push(goalDoc.data());
         });
+      }
 
-      }).catch(err => {
-        console.error("Error fetching categories:", err);
-        showNotification("Failed to load custom categories.", "error");
-      });
+      // 5. Process Transactions
+      state.transactions = [];
+      if (!txSnapshot.empty) {
+        txSnapshot.forEach(txDoc => {
+          state.transactions.push(txDoc.data());
+        });
+      }
 
+      // Preprocess transaction dates for rapid calculations and sorting
+      preprocessTransactionDates();
+
+      // Finished syncing, boot display!
+      triggerViewRender('dashboard');
     }).catch(err => {
-      console.error("Error fetching profile:", err);
-      showNotification("Failed to load user profile.", "error");
+      console.error("Error syncing user data from cloud:", err);
+      showNotification("Failed to load user data from cloud.", "error");
+      triggerViewRender('dashboard');
     });
   }
 
@@ -391,6 +396,7 @@
     addMock('expense', 'Entertainment', 1499, 'Netflix & Spotify Annual', 'Credit Card', 10);
 
     state.transactions = mockTransactions;
+    preprocessTransactionDates();
     
     // Batch write to Firestore for high performance
     const batch = firestoreInstance.batch();
@@ -533,7 +539,7 @@
     }
     iconWrapper.innerHTML = iconHTML;
 
-    lucide.createIcons();
+    lucide.createIcons({ root: banner });
 
     banner.classList.add('active');
 
@@ -553,7 +559,7 @@
       themeBtn.innerHTML = state.profile.themeMode === 'light' 
         ? '<i data-lucide="moon"></i>' 
         : '<i data-lucide="sun"></i>';
-      lucide.createIcons();
+      lucide.createIcons({ root: themeBtn });
     }
     
     const hueOptions = document.querySelectorAll('.color-option');
@@ -643,10 +649,7 @@
   function getTransactionsForMonth(date, transactionsList = state.transactions) {
     const year = date.getFullYear();
     const month = date.getMonth();
-    return transactionsList.filter(t => {
-      const tDate = new Date(t.date);
-      return tDate.getFullYear() === year && tDate.getMonth() === month;
-    });
+    return transactionsList.filter(t => t.parsedYear === year && t.parsedMonth === month);
   }
 
   function calculateTotals(transactionsList) {
@@ -741,9 +744,7 @@
     const listContainer = document.getElementById('dashboard-recent-transactions');
     
     const sorted = [...state.transactions].sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      if (dateB - dateA !== 0) return dateB - dateA;
+      if (b.date !== a.date) return b.date.localeCompare(a.date);
       return b.id.localeCompare(a.id);
     });
 
@@ -756,10 +757,12 @@
           <h4>No Transactions Yet</h4>
           <p>Click "Add Transaction" to start recording your cash flows.</p>
         </div>`;
+      lucide.createIcons({ root: listContainer });
       return;
     }
 
     listContainer.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     recent.forEach(tx => {
       const style = getCategoryStyle(tx.category);
       const item = document.createElement('div');
@@ -813,8 +816,10 @@
         deleteTransaction(tx.id);
       });
 
-      listContainer.appendChild(item);
+      fragment.appendChild(item);
     });
+    listContainer.appendChild(fragment);
+    lucide.createIcons({ root: listContainer });
   }
 
   function renderActiveBudgetsList() {
@@ -827,6 +832,7 @@
           <i data-lucide="pie-chart"></i>
           <p>No budgets set. Click "Manage" to configure monthly spending limits.</p>
         </div>`;
+      lucide.createIcons({ root: budgetList });
       return;
     }
 
@@ -841,6 +847,7 @@
     });
 
     budgetList.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     
     const budgetsData = budgetKeys.map(cat => {
       const limit = state.budgets[cat];
@@ -873,8 +880,10 @@
           <div class="progress-bar ${colorClass}" style="width: ${Math.min(b.pct, 100)}%;"></div>
         </div>
       `;
-      budgetList.appendChild(wrapper);
+      fragment.appendChild(wrapper);
     });
+    budgetList.appendChild(fragment);
+    lucide.createIcons({ root: budgetList });
   }
 
   function renderDashboardCharts() {
@@ -891,138 +900,163 @@
     const expenseGlow = `rgba(${hexToRgb(expenseColor)}, 0.05)`;
 
     if (charts.flow) {
-      charts.flow.destroy();
-    }
-
-    charts.flow = new Chart(flowCtx, {
-      type: 'line',
-      data: {
-        labels: dataFlow.labels,
-        datasets: [
-          {
-            label: 'Income',
-            data: dataFlow.income,
-            borderColor: incomeColor,
-            backgroundColor: incomeGlow,
-            fill: true,
-            tension: 0.4,
-            borderWidth: 3,
-            pointRadius: 2,
-            pointHoverRadius: 6
-          },
-          {
-            label: 'Expense',
-            data: dataFlow.expense,
-            borderColor: expenseColor,
-            backgroundColor: expenseGlow,
-            fill: true,
-            tension: 0.4,
-            borderWidth: 3,
-            pointRadius: 2,
-            pointHoverRadius: 6
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            display: true,
-            labels: {
-              color: getThemeTextColor(),
-              font: { family: 'Outfit', size: 12 }
+      charts.flow.data.labels = dataFlow.labels;
+      charts.flow.data.datasets[0].data = dataFlow.income;
+      charts.flow.data.datasets[0].borderColor = incomeColor;
+      charts.flow.data.datasets[0].backgroundColor = incomeGlow;
+      charts.flow.data.datasets[1].data = dataFlow.expense;
+      charts.flow.data.datasets[1].borderColor = expenseColor;
+      charts.flow.data.datasets[1].backgroundColor = expenseGlow;
+      charts.flow.options.plugins.legend.labels.color = getThemeTextColor();
+      charts.flow.options.scales.x.ticks.color = getThemeTextColor();
+      charts.flow.options.y.ticks.color = getThemeTextColor();
+      charts.flow.update();
+    } else {
+      charts.flow = new Chart(flowCtx, {
+        type: 'line',
+        data: {
+          labels: dataFlow.labels,
+          datasets: [
+            {
+              label: 'Income',
+              data: dataFlow.income,
+              borderColor: incomeColor,
+              backgroundColor: incomeGlow,
+              fill: true,
+              tension: 0.4,
+              borderWidth: 3,
+              pointRadius: 2,
+              pointHoverRadius: 6
+            },
+            {
+              label: 'Expense',
+              data: dataFlow.expense,
+              borderColor: expenseColor,
+              backgroundColor: expenseGlow,
+              fill: true,
+              tension: 0.4,
+              borderWidth: 3,
+              pointRadius: 2,
+              pointHoverRadius: 6
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              labels: {
+                color: getThemeTextColor(),
+                font: { family: 'Outfit', size: 12 }
+              }
+            },
+            tooltip: {
+              mode: 'index',
+              intersect: false,
+              titleFont: { family: 'Outfit', size: 13 },
+              bodyFont: { family: 'Outfit', size: 12 }
             }
           },
-          tooltip: {
-            mode: 'index',
-            intersect: false,
-            titleFont: { family: 'Outfit', size: 13 },
-            bodyFont: { family: 'Outfit', size: 12 }
-          }
-        },
-        scales: {
-          x: {
-            grid: { color: 'rgba(255,255,255,0.03)' },
-            ticks: { color: getThemeTextColor(), font: { family: 'Outfit' } }
-          },
-          y: {
-            grid: { color: 'rgba(255,255,255,0.03)' },
-            ticks: { color: getThemeTextColor(), font: { family: 'Outfit' } }
+          scales: {
+            x: {
+              grid: { color: 'rgba(255,255,255,0.03)' },
+              ticks: { color: getThemeTextColor(), font: { family: 'Outfit' } }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.03)' },
+              ticks: { color: getThemeTextColor(), font: { family: 'Outfit' } }
+            }
           }
         }
-      }
-    });
+      });
+    }
 
     const categoryCtx = document.getElementById('categoryChart').getContext('2d');
     const categoryData = getCategoryChartData(today);
 
     if (charts.category) {
-      charts.category.destroy();
-    }
-
-    if (categoryData.values.length === 0) {
-      charts.category = new Chart(categoryCtx, {
-        type: 'doughnut',
-        data: {
-          labels: ['No Data'],
-          datasets: [{
-            data: [1],
-            backgroundColor: ['rgba(150, 150, 150, 0.1)'],
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          cutout: '70%',
-          plugins: {
-            legend: { display: false },
-            tooltip: { enabled: false }
-          }
-        }
-      });
-      return;
-    }
-
-    charts.category = new Chart(categoryCtx, {
-      type: 'doughnut',
-      data: {
-        labels: categoryData.labels,
-        datasets: [{
-          data: categoryData.values,
-          backgroundColor: categoryData.colors,
-          borderWidth: 0,
-          hoverOffset: 4
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '70%',
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: {
-              color: getThemeTextColor(),
-              font: { family: 'Outfit', size: 11 },
-              boxWidth: 12
-            }
+      if (categoryData.values.length === 0) {
+        charts.category.data.labels = ['No Data'];
+        charts.category.data.datasets[0].data = [1];
+        charts.category.data.datasets[0].backgroundColor = ['rgba(150, 150, 150, 0.1)'];
+        charts.category.data.datasets[0].borderWidth = 0;
+        charts.category.options.plugins.legend.display = false;
+        charts.category.options.plugins.tooltip.enabled = false;
+      } else {
+        charts.category.data.labels = categoryData.labels;
+        charts.category.data.datasets[0].data = categoryData.values;
+        charts.category.data.datasets[0].backgroundColor = categoryData.colors;
+        charts.category.data.datasets[0].borderWidth = 0;
+        charts.category.options.plugins.legend.display = true;
+        charts.category.options.plugins.legend.labels.color = getThemeTextColor();
+        charts.category.options.plugins.tooltip.enabled = true;
+      }
+      charts.category.update();
+    } else {
+      if (categoryData.values.length === 0) {
+        charts.category = new Chart(categoryCtx, {
+          type: 'doughnut',
+          data: {
+            labels: ['No Data'],
+            datasets: [{
+              data: [1],
+              backgroundColor: ['rgba(150, 150, 150, 0.1)'],
+              borderWidth: 0
+            }]
           },
-          tooltip: {
-            titleFont: { family: 'Outfit', size: 12 },
-            bodyFont: { family: 'Outfit', size: 12 },
-            callbacks: {
-              label: function (context) {
-                const label = context.label || '';
-                const val = context.parsed || 0;
-                return ` ${label}: ${formatCurrency(val)}`;
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+              legend: { display: false },
+              tooltip: { enabled: false }
+            }
+          }
+        });
+      } else {
+        charts.category = new Chart(categoryCtx, {
+          type: 'doughnut',
+          data: {
+            labels: categoryData.labels,
+            datasets: [{
+              data: categoryData.values,
+              backgroundColor: categoryData.colors,
+              borderWidth: 0,
+              hoverOffset: 4
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  color: getThemeTextColor(),
+                  font: { family: 'Outfit', size: 11 },
+                  boxWidth: 12
+                }
+              },
+              tooltip: {
+                titleFont: { family: 'Outfit', size: 12 },
+                bodyFont: { family: 'Outfit', size: 12 },
+                callbacks: {
+                  label: function (context) {
+                    const label = context.label || '';
+                    const val = context.parsed || 0;
+                    return ` ${label}: ${formatCurrency(val)}`;
+                  }
+                }
               }
             }
           }
-        }
+        });
       }
-    });
+    }
   }
 
   function getThemeTextColor() {
@@ -1039,8 +1073,7 @@
       const expense = [0, 0, 0, 0];
 
       curMonthTx.forEach(t => {
-        const date = new Date(t.date);
-        const day = date.getDate();
+        const day = t.parsedDay || 1;
         let weekIndex = Math.min(3, Math.floor((day - 1) / 7));
         if (t.type === 'income') {
           income[weekIndex] += t.amount;
@@ -1064,7 +1097,7 @@
         let chunkExpense = 0;
 
         curMonthTx.forEach(t => {
-          const tDay = new Date(t.date).getDate();
+          const tDay = t.parsedDay || 1;
           if (tDay >= day && tDay <= nextDay) {
             if (t.type === 'income') chunkIncome += t.amount;
             else chunkExpense += t.amount;
@@ -1122,9 +1155,7 @@
     });
 
     list.sort((a, b) => {
-      const dateA = new Date(a.date);
-      const dateB = new Date(b.date);
-      if (dateB - dateA !== 0) return dateB - dateA;
+      if (b.date !== a.date) return b.date.localeCompare(a.date);
       return b.id.localeCompare(a.id);
     });
 
@@ -1155,11 +1186,12 @@
       document.getElementById('tx-pagination-info').textContent = 'Showing 0 of 0 entries';
       document.getElementById('tx-prev-page-btn').disabled = true;
       document.getElementById('tx-next-page-btn').disabled = true;
-      lucide.createIcons();
+      lucide.createIcons({ root: tableBody });
       return;
     }
 
     tableBody.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     paginatedList.forEach(t => {
       const row = document.createElement('tr');
       const style = getCategoryStyle(t.category);
@@ -1187,8 +1219,9 @@
       row.querySelector('.edit').addEventListener('click', () => openTransactionModal(t.id));
       row.querySelector('.delete').addEventListener('click', () => deleteTransaction(t.id));
 
-      tableBody.appendChild(row);
+      fragment.appendChild(row);
     });
+    tableBody.appendChild(fragment);
 
     document.getElementById('tx-pagination-info').textContent = `Showing ${startIdx + 1} to ${endIdx} of ${totalEntries} entries`;
     
@@ -1198,7 +1231,7 @@
     prevBtn.disabled = txPagination.currentPage === 1;
     nextBtn.disabled = txPagination.currentPage === maxPage;
 
-    lucide.createIcons();
+    lucide.createIcons({ root: tableBody });
   }
 
   function handlePagination() {
@@ -1276,8 +1309,10 @@
             <p>Set budget limits for your expense categories to keep track of spending limits.</p>
           </div>
         </div>`;
+      lucide.createIcons({ root: budgetsGrid });
     } else {
       budgetsGrid.innerHTML = '';
+      const fragment = document.createDocumentFragment();
       budgetKeys.forEach(cat => {
         const limit = state.budgets[cat];
         const spent = categorySpent[cat] || 0;
@@ -1322,8 +1357,10 @@
           deleteBudget(cat);
         });
 
-        budgetsGrid.appendChild(card);
+        fragment.appendChild(card);
       });
+      budgetsGrid.appendChild(fragment);
+      lucide.createIcons({ root: budgetsGrid });
     }
 
     const goalsGrid = document.getElementById('goals-card-grid');
@@ -1336,8 +1373,10 @@
             <p>Define targets for your vacations, hardware updates, or investments.</p>
           </div>
         </div>`;
+      lucide.createIcons({ root: goalsGrid });
     } else {
       goalsGrid.innerHTML = '';
+      const fragment = document.createDocumentFragment();
       state.goals.forEach(goal => {
         const pct = goal.target > 0 ? Math.round((goal.saved / goal.target) * 100) : 0;
         
@@ -1385,18 +1424,18 @@
           deleteGoal(goal.id);
         });
 
-        goalsGrid.appendChild(card);
+        fragment.appendChild(card);
       });
+      goalsGrid.appendChild(fragment);
+      lucide.createIcons({ root: goalsGrid });
     }
-
-    lucide.createIcons();
   }
 
   // --- Reports & Insights Rendering Engine ---
   function renderReports() {
     const today = new Date();
     const yearSelect = document.getElementById('reports-chart-year');
-    const years = [...new Set(state.transactions.map(t => new Date(t.date).getFullYear()))].sort((a,b)=>b-a);
+    const years = [...new Set(state.transactions.map(t => t.parsedYear))].filter(Boolean).sort((a,b)=>b-a);
     
     if (years.length > 0) {
       yearSelect.innerHTML = years.map(y => `<option value="${y}" ${y === today.getFullYear() ? 'selected' : ''}>${y}</option>`).join('');
@@ -1425,121 +1464,142 @@
     const expenseColor = rootStyles.getPropertyValue('--color-expense').trim() || '#ff0055';
 
     if (charts.reportsAnalysis) {
-      charts.reportsAnalysis.destroy();
-    }
-
-    charts.reportsAnalysis = new Chart(analysisCtx, {
-      type: 'bar',
-      data: {
-        labels: monthlySummary.labels,
-        datasets: [
-          {
-            label: 'Income',
-            data: monthlySummary.income,
-            backgroundColor: incomeColor,
-            borderRadius: 4
-          },
-          {
-            label: 'Expense',
-            data: monthlySummary.expense,
-            backgroundColor: expenseColor,
-            borderRadius: 4
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            labels: {
-              color: getThemeTextColor(),
-              font: { family: 'Outfit' }
+      charts.reportsAnalysis.data.labels = monthlySummary.labels;
+      charts.reportsAnalysis.data.datasets[0].data = monthlySummary.income;
+      charts.reportsAnalysis.data.datasets[0].backgroundColor = incomeColor;
+      charts.reportsAnalysis.data.datasets[1].data = monthlySummary.expense;
+      charts.reportsAnalysis.data.datasets[1].backgroundColor = expenseColor;
+      charts.reportsAnalysis.options.plugins.legend.labels.color = getThemeTextColor();
+      charts.reportsAnalysis.options.scales.x.ticks.color = getThemeTextColor();
+      charts.reportsAnalysis.options.y.ticks.color = getThemeTextColor();
+      charts.reportsAnalysis.update();
+    } else {
+      charts.reportsAnalysis = new Chart(analysisCtx, {
+        type: 'bar',
+        data: {
+          labels: monthlySummary.labels,
+          datasets: [
+            {
+              label: 'Income',
+              data: monthlySummary.income,
+              backgroundColor: incomeColor,
+              borderRadius: 4
+            },
+            {
+              label: 'Expense',
+              data: monthlySummary.expense,
+              backgroundColor: expenseColor,
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: {
+                color: getThemeTextColor(),
+                font: { family: 'Outfit' }
+              }
+            },
+            tooltip: {
+              titleFont: { family: 'Outfit' },
+              bodyFont: { family: 'Outfit' }
             }
           },
-          tooltip: {
-            titleFont: { family: 'Outfit' },
-            bodyFont: { family: 'Outfit' }
-          }
-        },
-        scales: {
-          x: {
-            grid: { color: 'rgba(255,255,255,0.03)' },
-            ticks: { color: getThemeTextColor(), font: { family: 'Outfit' } }
-          },
-          y: {
-            grid: { color: 'rgba(255,255,255,0.03)' },
-            ticks: { color: getThemeTextColor(), font: { family: 'Outfit' } }
+          scales: {
+            x: {
+              grid: { color: 'rgba(255,255,255,0.03)' },
+              ticks: { color: getThemeTextColor(), font: { family: 'Outfit' } }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.03)' },
+              ticks: { color: getThemeTextColor(), font: { family: 'Outfit' } }
+            }
           }
         }
-      }
-    });
+      });
+    }
 
     const breakdownCtx = document.getElementById('reportsBreakdownChart').getContext('2d');
     const dateObj = new Date(year, monthIdx, 1);
     const breakdownData = getCategoryChartData(dateObj);
 
     if (charts.reportsBreakdown) {
-      charts.reportsBreakdown.destroy();
-    }
-
-    if (breakdownData.values.length === 0) {
-      charts.reportsBreakdown = new Chart(breakdownCtx, {
-        type: 'pie',
-        data: {
-          labels: ['No Data'],
-          datasets: [{
-            data: [1],
-            backgroundColor: ['rgba(150, 150, 150, 0.1)'],
-            borderWidth: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false } }
-        }
-      });
-      return;
-    }
-
-    charts.reportsBreakdown = new Chart(breakdownCtx, {
-      type: 'pie',
-      data: {
-        labels: breakdownData.labels,
-        datasets: [{
-          data: breakdownData.values,
-          backgroundColor: breakdownData.colors,
-          borderWidth: 1,
-          borderColor: 'rgba(255,255,255,0.05)'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: {
-            position: 'right',
-            labels: {
-              color: getThemeTextColor(),
-              font: { family: 'Outfit', size: 11 },
-              boxWidth: 12
-            }
+      if (breakdownData.values.length === 0) {
+        charts.reportsBreakdown.data.labels = ['No Data'];
+        charts.reportsBreakdown.data.datasets[0].data = [1];
+        charts.reportsBreakdown.data.datasets[0].backgroundColor = ['rgba(150, 150, 150, 0.1)'];
+        charts.reportsBreakdown.data.datasets[0].borderWidth = 0;
+        charts.reportsBreakdown.options.plugins.legend.display = false;
+      } else {
+        charts.reportsBreakdown.data.labels = breakdownData.labels;
+        charts.reportsBreakdown.data.datasets[0].data = breakdownData.values;
+        charts.reportsBreakdown.data.datasets[0].backgroundColor = breakdownData.colors;
+        charts.reportsBreakdown.data.datasets[0].borderWidth = 1;
+        charts.reportsBreakdown.options.plugins.legend.display = true;
+        charts.reportsBreakdown.options.plugins.legend.labels.color = getThemeTextColor();
+      }
+      charts.reportsBreakdown.update();
+    } else {
+      if (breakdownData.values.length === 0) {
+        charts.reportsBreakdown = new Chart(breakdownCtx, {
+          type: 'pie',
+          data: {
+            labels: ['No Data'],
+            datasets: [{
+              data: [1],
+              backgroundColor: ['rgba(150, 150, 150, 0.1)'],
+              borderWidth: 0
+            }]
           },
-          tooltip: {
-            titleFont: { family: 'Outfit' },
-            bodyFont: { family: 'Outfit' },
-            callbacks: {
-              label: function (context) {
-                const label = context.label || '';
-                const val = context.parsed || 0;
-                return ` ${label}: ${formatCurrency(val)}`;
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }
+          }
+        });
+      } else {
+        charts.reportsBreakdown = new Chart(breakdownCtx, {
+          type: 'pie',
+          data: {
+            labels: breakdownData.labels,
+            datasets: [{
+              data: breakdownData.values,
+              backgroundColor: breakdownData.colors,
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.05)'
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'right',
+                labels: {
+                  color: getThemeTextColor(),
+                  font: { family: 'Outfit', size: 11 },
+                  boxWidth: 12
+                }
+              },
+              tooltip: {
+                titleFont: { family: 'Outfit' },
+                bodyFont: { family: 'Outfit' },
+                callbacks: {
+                  label: function (context) {
+                    const label = context.label || '';
+                    const val = context.parsed || 0;
+                    return ` ${label}: ${formatCurrency(val)}`;
+                  }
+                }
               }
             }
           }
-        }
+        });
       }
-    });
+    }
   }
 
   function getMonthlySummaryData(year) {
@@ -1551,13 +1611,14 @@
     const expense = Array(12).fill(0);
 
     state.transactions.forEach(t => {
-      const date = new Date(t.date);
-      if (date.getFullYear() === year) {
-        const month = date.getMonth();
-        if (t.type === 'income') {
-          income[month] += t.amount;
-        } else {
-          expense[month] += t.amount;
+      if (t.parsedYear === year) {
+        const month = t.parsedMonth;
+        if (month >= 0 && month < 12) {
+          if (t.type === 'income') {
+            income[month] += t.amount;
+          } else {
+            expense[month] += t.amount;
+          }
         }
       }
     });
@@ -1646,6 +1707,7 @@
     }
 
     container.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     insights.forEach(ins => {
       const card = document.createElement('div');
       card.className = `insight-card ${ins.type}`;
@@ -1658,10 +1720,11 @@
           <p class="insight-desc">${escapeHtml(ins.desc)}</p>
         </div>
       `;
-      container.appendChild(card);
+      fragment.appendChild(card);
     });
+    container.appendChild(fragment);
 
-    lucide.createIcons();
+    lucide.createIcons({ root: container });
   }
 
   // --- Settings View Layout Rendering ---
@@ -1675,6 +1738,7 @@
     const cats = state.categories[type] || [];
 
     list.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     cats.forEach(c => {
       const chip = document.createElement('div');
       chip.className = 'category-chip';
@@ -1695,9 +1759,10 @@
         });
       }
 
-      list.appendChild(chip);
+      fragment.appendChild(chip);
     });
-    lucide.createIcons();
+    list.appendChild(fragment);
+    lucide.createIcons({ root: list });
   }
 
   function deleteCategory(cat, type) {
@@ -1831,6 +1896,12 @@
 
     // Sync to Cloud
     if (txObj) {
+      const parts = txObj.date.split('-');
+      if (parts.length === 3) {
+        txObj.parsedYear = parseInt(parts[0], 10);
+        txObj.parsedMonth = parseInt(parts[1], 10) - 1;
+        txObj.parsedDay = parseInt(parts[2], 10);
+      }
       writeTransactionToCloud(txObj);
     }
 
@@ -2096,7 +2167,7 @@
     const cur = state.profile.currency;
     let csvContent = `Date,Description,Category,Type,Payment Method,Amount (${cur})\n`;
 
-    const sorted = [...txs].sort((a,b) => new Date(b.date) - new Date(a.date));
+    const sorted = [...txs].sort((a,b) => b.date.localeCompare(a.date));
 
     sorted.forEach(t => {
       const cleanDesc = t.description.replace(/"/g, '""');
@@ -2137,6 +2208,7 @@
         
         if (importedState.profile && Array.isArray(importedState.transactions)) {
           state = importedState;
+          preprocessTransactionDates();
           
           // Write whole batch to Firestore
           if (currentUser) {
@@ -2169,6 +2241,7 @@
 
   // --- Attach Form & Button Click Listeners ---
   function initEventListeners() {
+    let searchTimeout;
     document.getElementById('quick-add-transaction-btn').addEventListener('click', () => {
       openTransactionModal();
     });
@@ -2235,8 +2308,11 @@
     });
 
     document.getElementById('tx-search-input').addEventListener('input', () => {
-      txPagination.currentPage = 1;
-      renderTransactionsTable();
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        txPagination.currentPage = 1;
+        renderTransactionsTable();
+      }, 150);
     });
     document.getElementById('tx-filter-type').addEventListener('change', () => {
       txPagination.currentPage = 1;
