@@ -15,7 +15,7 @@ A modern and responsive **Expense Tracker** web application that helps users man
 
 | Dashboard | Transactions |
 |-----------|--------------|
-| ![Dashboard](assets/dashboard.png) | ![Transactions](assets/transactions.png) |
+| ![Dashboard](assests/dashboard.png) | ![Transactions](assests/transaction.png) |
 
 ---
 
@@ -58,7 +58,7 @@ Expense-Tracker/
 │
 ├── assets/
 │   ├── dashboard.png
-│   ├── transactions.png
+│   ├── transaction.png
 │   └── ...
 │
 ├── app.js
@@ -125,13 +125,13 @@ const firebaseConfig = {
 
 ## Dashboard
 
-<img src="assets/dashboard.png" width="900"/>
+<img src="assests/dashboard.png" width="900"/>
 
 ---
 
 ## Transactions
 
-<img src="assets/transactions.png" width="900"/>
+<img src="assests/transactions.png" width="900"/>
 
 ---
 
