@@ -65,7 +65,7 @@
       name: 'Saurabh Pandey',
       currency: 'INR',
       themeHue: 250,
-      themeMode: 'dark'
+      themeMode: 'light'
     },
     transactions: [],
     budgets: {},
@@ -276,7 +276,7 @@
           name: currentUser.displayName || 'Saurabh Pandey',
           currency: 'INR',
           themeHue: 250,
-          themeMode: 'dark'
+          themeMode: 'light'
         };
         userRef.set(state.profile).catch(err => console.error("Error setting profile:", err));
       }
@@ -474,7 +474,7 @@
         name: 'Saurabh Pandey',
         currency: 'INR',
         themeHue: 250,
-        themeMode: 'dark'
+        themeMode: 'light'
       },
       transactions: [],
       budgets: {},
@@ -884,6 +884,12 @@
 
     const dataFlow = getFlowChartData(periodType);
 
+    const rootStyles = getComputedStyle(document.documentElement);
+    const incomeColor = rootStyles.getPropertyValue('--color-income').trim() || '#39ff14';
+    const expenseColor = rootStyles.getPropertyValue('--color-expense').trim() || '#ff0055';
+    const incomeGlow = `rgba(${hexToRgb(incomeColor)}, 0.05)`;
+    const expenseGlow = `rgba(${hexToRgb(expenseColor)}, 0.05)`;
+
     if (charts.flow) {
       charts.flow.destroy();
     }
@@ -896,8 +902,8 @@
           {
             label: 'Income',
             data: dataFlow.income,
-            borderColor: '#00ff87',
-            backgroundColor: 'rgba(0, 255, 135, 0.05)',
+            borderColor: incomeColor,
+            backgroundColor: incomeGlow,
             fill: true,
             tension: 0.4,
             borderWidth: 3,
@@ -907,8 +913,8 @@
           {
             label: 'Expense',
             data: dataFlow.expense,
-            borderColor: '#ff0055',
-            backgroundColor: 'rgba(255, 0, 85, 0.05)',
+            borderColor: expenseColor,
+            backgroundColor: expenseGlow,
             fill: true,
             tension: 0.4,
             borderWidth: 3,
@@ -1354,6 +1360,7 @@
             <div style="display:flex; justify-content:space-between; align-items:center;">
               <span class="goal-name">${escapeHtml(goal.name)}</span>
               <div style="display:flex; gap:0.25rem;">
+                <button class="action-btn-small fund-goal" data-id="${goal.id}" title="Manage Funds"><i data-lucide="plus-circle"></i></button>
                 <button class="action-btn-small edit-goal" data-id="${goal.id}" title="Edit"><i data-lucide="edit-3"></i></button>
                 <button class="action-btn-small delete-goal" data-id="${goal.id}" title="Delete"><i data-lucide="trash-2"></i></button>
               </div>
@@ -1368,6 +1375,9 @@
           </div>
         `;
 
+        card.querySelector('.fund-goal').addEventListener('click', () => {
+          openGoalFundModal(goal.id);
+        });
         card.querySelector('.edit-goal').addEventListener('click', () => {
           openGoalModal(goal.id);
         });
@@ -1410,6 +1420,10 @@
     const analysisCtx = document.getElementById('reportsAnalysisChart').getContext('2d');
     const monthlySummary = getMonthlySummaryData(year);
 
+    const rootStyles = getComputedStyle(document.documentElement);
+    const incomeColor = rootStyles.getPropertyValue('--color-income').trim() || '#39ff14';
+    const expenseColor = rootStyles.getPropertyValue('--color-expense').trim() || '#ff0055';
+
     if (charts.reportsAnalysis) {
       charts.reportsAnalysis.destroy();
     }
@@ -1422,13 +1436,13 @@
           {
             label: 'Income',
             data: monthlySummary.income,
-            backgroundColor: '#00ff87',
+            backgroundColor: incomeColor,
             borderRadius: 4
           },
           {
             label: 'Expense',
             data: monthlySummary.expense,
-            backgroundColor: '#ff0055',
+            backgroundColor: expenseColor,
             borderRadius: 4
           }
         ]
@@ -1819,6 +1833,24 @@
     if (txObj) {
       writeTransactionToCloud(txObj);
     }
+
+    // Budget exceeded alert trigger
+    if (typeVal === 'expense' && state.budgets[catVal] !== undefined) {
+      const budgetLimit = state.budgets[catVal];
+      const today = new Date(dateVal);
+      const curMonthTx = getTransactionsForMonth(today);
+      let spent = 0;
+      curMonthTx.forEach(t => {
+        if (t.type === 'expense' && t.category === catVal) {
+          spent += t.amount;
+        }
+      });
+      if (spent > budgetLimit) {
+        setTimeout(() => {
+          showNotification(`BUDGET EXCEEDED! You spent ${formatCurrency(spent)} which is over your ${formatCurrency(budgetLimit)} limit for ${catVal}.`, 'warning');
+        }, 1000);
+      }
+    }
     
     closeAllModals();
     
@@ -1990,6 +2022,64 @@
     }
   }
 
+  function openGoalFundModal(id) {
+    const modal = document.getElementById('goal-fund-modal');
+    const goal = state.goals.find(g => g.id === id);
+    if (!goal) return;
+
+    document.getElementById('goal-fund-id').value = goal.id;
+    document.getElementById('goal-fund-name-display').textContent = goal.name;
+    document.getElementById('goal-fund-amount').value = '';
+    
+    const toggles = modal.querySelectorAll('.form-toggle-option');
+    toggles.forEach(opt => {
+      if (opt.getAttribute('data-fund-type') === 'deposit') {
+        opt.classList.add('active');
+      } else {
+        opt.classList.remove('active');
+      }
+    });
+
+    modal.classList.add('active');
+  }
+
+  function saveGoalFund() {
+    const id = document.getElementById('goal-fund-id').value;
+    const amount = parseFloat(document.getElementById('goal-fund-amount').value);
+    const type = document.querySelector('#goal-fund-modal .form-toggle-option.active').getAttribute('data-fund-type');
+
+    if (isNaN(amount) || amount <= 0) {
+      showNotification('Please enter a valid positive amount.', 'error');
+      return;
+    }
+
+    const goalIdx = state.goals.findIndex(g => g.id === id);
+    if (goalIdx === -1) return;
+
+    const goal = state.goals[goalIdx];
+    if (type === 'deposit') {
+      if (goal.saved + amount > goal.target) {
+        showNotification('Deposit exceeds target amount!', 'error');
+        return;
+      }
+      goal.saved += amount;
+      showNotification(`Deposited ${formatCurrency(amount)} into ${goal.name}.`, 'success');
+    } else {
+      if (goal.saved - amount < 0) {
+        showNotification('Cannot withdraw more than currently saved!', 'error');
+        return;
+      }
+      goal.saved -= amount;
+      showNotification(`Withdrew ${formatCurrency(amount)} from ${goal.name}.`, 'success');
+    }
+
+    // Sync changes to cloud
+    writeGoalToCloud(goal);
+
+    closeAllModals();
+    renderBudgetsAndGoals();
+  }
+
   function closeAllModals() {
     const overlays = document.querySelectorAll('.modal-overlay');
     overlays.forEach(o => o.classList.remove('active'));
@@ -2086,6 +2176,7 @@
     document.getElementById('save-transaction-btn').addEventListener('click', saveTransaction);
     document.getElementById('save-budget-btn').addEventListener('click', saveBudget);
     document.getElementById('save-goal-btn').addEventListener('click', saveGoal);
+    document.getElementById('save-goal-fund-btn').addEventListener('click', saveGoalFund);
 
     document.getElementById('add-budget-trigger-btn').addEventListener('click', () => {
       openBudgetModal();
@@ -2117,6 +2208,14 @@
         toggleOptions.forEach(o => o.classList.remove('active'));
         this.classList.add('active');
         populateCategoriesDropdowns();
+      });
+    });
+
+    const fundToggleOptions = document.querySelectorAll('#goal-fund-modal .form-toggle-option');
+    fundToggleOptions.forEach(opt => {
+      opt.addEventListener('click', function () {
+        fundToggleOptions.forEach(o => o.classList.remove('active'));
+        this.classList.add('active');
       });
     });
 

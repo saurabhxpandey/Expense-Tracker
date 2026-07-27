@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -417,8 +417,9 @@
             <div class="settings-row">
               <label>Accent Theme Color</label>
               <div class="color-grid">
-                <!-- Hues: Indigo (250), Emerald (150), Rose (350), Amber (40), Purple (280), Cyan (190) -->
-                <div class="color-option active" data-hue="250" style="background-color: hsl(250, 85%, 60%);" title="Indigo"></div>
+                <!-- Hues: Neon Green/Midnight Velocity (120), Indigo (250), Emerald (150), Rose (350), Amber (40), Purple (280), Cyan (190) -->
+                <div class="color-option active" data-hue="120" style="background-color: hsl(120, 100%, 54%);" title="Midnight Velocity (Neon Green)"></div>
+                <div class="color-option" data-hue="250" style="background-color: hsl(250, 85%, 60%);" title="Indigo"></div>
                 <div class="color-option" data-hue="150" style="background-color: hsl(150, 75%, 45%);" title="Emerald"></div>
                 <div class="color-option" data-hue="350" style="background-color: hsl(350, 85%, 60%);" title="Rose"></div>
                 <div class="color-option" data-hue="40" style="background-color: hsl(40, 90%, 50%);" title="Amber"></div>
@@ -619,6 +620,41 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" data-close-modal="goal-modal">Cancel</button>
         <button class="btn btn-primary" id="save-goal-btn">Create Goal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: MANAGE GOAL FUNDS -->
+  <div class="modal-overlay" id="goal-fund-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title" id="goal-fund-modal-title">Manage Goal Funds</h3>
+        <button class="modal-close" data-close-modal="goal-fund-modal">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body">
+        <input type="hidden" id="goal-fund-id">
+        <div class="form-group" style="margin-bottom: 1.25rem;">
+          <label style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase;">Goal</label>
+          <div id="goal-fund-name-display" style="font-weight: 700; font-size: 1.1rem; color: var(--accent-color);">Goal Name</div>
+        </div>
+        
+        <div class="form-toggle" id="goal-fund-type-toggle" style="margin-bottom: 1.25rem;">
+          <div class="form-toggle-option active" data-fund-type="deposit">Deposit Funds</div>
+          <div class="form-toggle-option" data-fund-type="withdraw">Withdraw Funds</div>
+        </div>
+
+        <div class="form-group">
+          <label for="goal-fund-amount">Amount</label>
+          <input type="number" step="0.01" min="0.01" class="input-field-noicon" id="goal-fund-amount" placeholder="0.00" required>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-close-modal="goal-fund-modal">Cancel</button>
+        <button class="btn btn-primary" id="save-goal-fund-btn">Update Funds</button>
       </div>
     </div>
   </div>

@@ -1,72 +1,73 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* --- CSS Variables & Themes --- */
 :root {
   /* Font Family */
-  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-tech: 'JetBrains Mono', 'Courier New', Courier, monospace;
 
   /* Theme Transitions */
-  --theme-transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --theme-transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 
-  /* Color Schemes (Default Dark Mode - Cyber Tech) */
-  --bg-color: #030712;
-  --bg-glass: rgba(11, 19, 43, 0.7);
-  --bg-glass-hover: rgba(20, 30, 65, 0.85);
-  --bg-glass-active: rgba(28, 43, 90, 0.95);
-  --border-glass: rgba(0, 229, 255, 0.15);
-  --border-glass-focus: rgba(0, 255, 135, 0.4);
+  /* Color Schemes (Default Light Mode - Clean White UI) */
+  --bg-color: #f8fafc; /* Slate 50 background */
+  --bg-glass: rgba(255, 255, 255, 0.85); /* Frosted white panel */
+  --bg-glass-hover: rgba(255, 255, 255, 0.95);
+  --bg-glass-active: #ffffff;
+  --border-glass: rgba(15, 23, 42, 0.06); /* Soft, subtle borders */
+  --border-glass-focus: rgba(99, 102, 241, 0.35);
   
-  --text-primary: #f3f4f6;
-  --text-secondary: #00e5ff; /* Cyan tech text */
-  --text-muted: #6b7280;
+  --text-primary: #0f172a; /* Slate 900 text */
+  --text-secondary: #4f46e5; /* Indigo accent text */
+  --text-muted: #64748b; /* Slate muted text */
 
   /* Dynamic Accent Colors */
-  --accent-hue: 190; /* Cyan default */
-  --accent-color: #00e5ff;
-  --accent-glow: rgba(0, 229, 255, 0.2);
-  --accent-light: #00ff87; /* Tech green */
-  --accent-dark: #0097a7;
+  --accent-hue: 250; /* Default 250 Indigo */
+  --accent-color: hsl(var(--accent-hue), 80%, 55%);
+  --accent-gradient: linear-gradient(135deg, hsl(var(--accent-hue), 80%, 55%), hsl(280, 80%, 55%)); /* Indigo to Purple gradient */
+  --accent-glow: hsla(var(--accent-hue), 80%, 55%, 0.08);
+  --accent-light: hsl(var(--accent-hue), 80%, 65%);
+  --accent-dark: hsl(var(--accent-hue), 80%, 40%);
 
   /* Semantic Colors - Tech & Money */
-  --color-income: #00ff87; /* Wealth green */
-  --color-income-glow: rgba(0, 255, 135, 0.18);
-  --color-expense: #ff0055; /* Neon pink/red warning */
-  --color-expense-glow: rgba(255, 0, 85, 0.18);
-  --color-warning: #ffd600; /* Cyber Gold */
-  --color-warning-glow: rgba(255, 214, 0, 0.18);
+  --color-income: #10b981; /* Emerald Green */
+  --color-income-glow: rgba(16, 185, 129, 0.08);
+  --color-expense: #ef4444; /* Rose Red */
+  --color-expense-glow: rgba(239, 68, 68, 0.08);
+  --color-warning: #f59e0b; /* Amber warning */
+  --color-warning-glow: rgba(245, 158, 11, 0.08);
 
-  /* Box Shadows */
-  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 8px 32px 0 rgba(0, 229, 255, 0.1);
-  --shadow-lg: 0 12px 40px 0 rgba(0, 255, 135, 0.15);
-  --shadow-glow: 0 0 20px var(--accent-glow);
+  /* Soft Shadows */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 10px 30px -5px rgba(15, 23, 42, 0.04), 0 8px 15px -6px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 25px 50px -12px rgba(15, 23, 42, 0.05);
+  --shadow-glow: 0 0 15px var(--accent-glow);
 
   /* Border Radii */
-  --radius-sm: 6px;
-  --radius-md: 12px;
-  --radius-lg: 20px;
+  --radius-sm: 8px;
+  --radius-md: 12px; /* Clean rounded elements */
+  --radius-lg: 24px; /* Spacious rounded cards */
   --radius-round: 50%;
 }
 
-/* Light Theme Variables Override */
-[data-theme="light"] {
-  --bg-color: #f8fafc;
-  --bg-glass: rgba(255, 255, 255, 0.8);
-  --bg-glass-hover: rgba(230, 242, 255, 0.9);
-  --bg-glass-active: rgba(200, 230, 255, 0.95);
-  --border-glass: rgba(0, 150, 136, 0.15);
-  --border-glass-focus: rgba(0, 150, 136, 0.3);
+/* Dark Theme Variables Override (selected via settings) */
+[data-theme="dark"] {
+  --bg-color: #0b0f19;
+  --bg-glass: rgba(15, 23, 42, 0.65);
+  --bg-glass-hover: rgba(30, 41, 59, 0.85);
+  --bg-glass-active: rgba(30, 41, 59, 0.95);
+  --border-glass: rgba(255, 255, 255, 0.08);
+  --border-glass-focus: rgba(99, 102, 241, 0.45);
 
-  --text-primary: #0f172a;
-  --text-secondary: #0284c7;
+  --text-primary: #f3f4f6;
+  --text-secondary: #818cf8;
   --text-muted: #64748b;
 
-  --accent-color: #0284c7;
-  --accent-glow: rgba(2, 132, 199, 0.12);
+  --accent-color: #3b82f6;
+  --accent-glow: rgba(99, 102, 241, 0.25);
   
-  --shadow-md: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
-  --shadow-lg: 0 12px 40px 0 rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
 }
 
 /* Reset and Base Styles */
@@ -87,10 +88,10 @@ body {
   overflow-x: hidden;
   transition: var(--theme-transition);
   background-image: 
-    linear-gradient(rgba(0, 229, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 229, 255, 0.02) 1px, transparent 1px),
-    radial-gradient(at 0% 0%, rgba(0, 255, 135, 0.08) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(0, 229, 255, 0.08) 0px, transparent 50%);
+    linear-gradient(rgba(99, 102, 241, 0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99, 102, 241, 0.015) 1px, transparent 1px),
+    radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.05) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, rgba(99, 102, 241, 0.05) 0px, transparent 50%);
   background-size: 40px 40px, 40px 40px, auto, auto;
 }
 
@@ -154,7 +155,7 @@ aside {
 .logo-icon {
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, var(--accent-color), var(--accent-light));
+  background: var(--accent-gradient);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -162,7 +163,7 @@ aside {
   color: #fff;
   font-weight: 700;
   font-size: 1.25rem;
-  box-shadow: 0 4px 15px rgba(var(--accent-hue), 85%, 60%, 0.4);
+  box-shadow: 0 4px 15px var(--accent-glow);
 }
 
 .logo-text {
@@ -340,13 +341,13 @@ header {
 }
 
 .btn-primary {
-  background: var(--accent-color);
+  background: var(--accent-gradient);
   color: #fff;
   box-shadow: 0 4px 14px 0 var(--accent-glow);
 }
 
 .btn-primary:hover {
-  background: var(--accent-light);
+  opacity: 0.95;
   transform: translateY(-2px);
   box-shadow: 0 6px 20px 0 var(--accent-glow);
 }
