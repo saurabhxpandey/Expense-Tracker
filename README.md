@@ -131,7 +131,7 @@ const firebaseConfig = {
 
 ## Transactions
 
-<img src="assests/transactions.png" width="900"/>
+<img src="assests/transaction.png" width="900"/>
 
 ---
 
