@@ -1818,3 +1818,52 @@ button,
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
+/* --- Transactions Mobile Responsive Fix --- */
+
+/* 1. Table wrapper ko touch-scrollable banana */
+.table-responsive, 
+.transactions-table-container,
+#view-transactions .glass-panel {
+  width: 100% !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 2. Mobile screen adjustments (768px se neeche) */
+@media screen and (max-width: 768px) {
+  /* Filters aur Search bar ko vertically stack karo */
+  .filter-controls,
+  .tx-filters-container,
+  #view-transactions .toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0.75rem !important;
+  }
+
+  .filter-controls select,
+  .filter-controls input,
+  #tx-search-input {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Table ke extra columns hide karke screen clean karo */
+  #transactions-table-body td, 
+  #transactions-table thead th {
+    padding: 0.6rem 0.4rem !important;
+    font-size: 0.8rem !important;
+    white-space: nowrap;
+  }
+
+  /* Payment method wala column choti screen par hide kar sakte ho taaki table na phaile */
+  #transactions-table thead th:nth-child(4),
+  #transactions-table-body td:nth-child(4) {
+    display: none;
+  }
+
+  /* Action buttons ka size adjust karo */
+  .action-btn-small {
+    padding: 0.35rem !important;
+  }
+}
