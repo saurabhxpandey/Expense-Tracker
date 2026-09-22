@@ -2598,5 +2598,29 @@
     initAuthFormHandlers();
     bootFirebaseApp();
   });
+  // Native Android Hardware Back Button Handler
+if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+  const { App } = window.Capacitor.Plugins;
+  if (App) {
+    App.addListener('backButton', ({ canGoBack }) => {
+      // 1. Agar koi Modal khula hai toh pehle use band karo
+      const activeModal = document.querySelector('.modal-overlay.active');
+      if (activeModal) {
+        activeModal.classList.remove('active');
+        return;
+      }
+
+      // 2. Agar user kisi aur tab me hai toh Dashboard par wapas le jao
+      const currentActive = document.querySelector('.nav-item.active');
+      if (currentActive && currentActive.getAttribute('data-view') !== 'dashboard') {
+        triggerViewClick('dashboard');
+        return;
+      }
+
+      // 3. Agar dashboard par hai toh app minimize / exit hone do
+      App.exitApp();
+    });
+  }
+}
 
 })();
