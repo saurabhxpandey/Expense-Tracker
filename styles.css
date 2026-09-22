@@ -1808,3 +1808,13 @@ select.input-field-noicon {
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
+button, 
+.nav-item, 
+.transaction-item, 
+.action-btn-small, 
+.form-toggle-option, 
+.category-chip {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
