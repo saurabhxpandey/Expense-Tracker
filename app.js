@@ -120,7 +120,6 @@
       // Bind Auth listener
       bindFirebaseAuthListener();
       
-      // Transition to auth screen (handled by listener)
     } catch (e) {
       console.error('Firebase initialization crash:', e);
     }
@@ -234,14 +233,28 @@
       }
     });
 
-    // Google Popup Sign In
-    googleBtn.addEventListener('click', () => {
+    // Native & Web Google Sign In
+    googleBtn.addEventListener('click', async () => {
       errorBox.style.display = 'none';
-      const provider = new firebase.auth.GoogleAuthProvider();
-      authInstance.signInWithPopup(provider)
-        .catch(err => {
-          showAuthError(err.message);
-        });
+      try {
+        if (window.Capacitor && window.Capacitor.isNativePlatform()) {
+          const { GoogleAuth } = window.Capacitor.Plugins;
+          if (!GoogleAuth) {
+            throw new Error("Native Google Auth plugin is not available on this device.");
+          }
+          await GoogleAuth.initialize();
+          const googleUser = await GoogleAuth.signIn();
+
+          const credential = firebase.auth.GoogleAuthProvider.credential(googleUser.authentication.idToken);
+          await authInstance.signInWithCredential(credential);
+        } else {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          await authInstance.signInWithPopup(provider);
+        }
+      } catch (err) {
+        console.error("Google Sign-In Error:", err);
+        showAuthError(err.message || 'Google sign-in was cancelled or failed.');
+      }
     });
 
     // Sidebar sign-out button
@@ -267,14 +280,13 @@
         const parts = t.date.split('-');
         if (parts.length === 3) {
           t.parsedYear = parseInt(parts[0], 10);
-          t.parsedMonth = parseInt(parts[1], 10) - 1; // 0-indexed to match JS Date
+          t.parsedMonth = parseInt(parts[1], 10) - 1;
           t.parsedDay = parseInt(parts[2], 10);
         }
       }
     });
   }
 
-  // High-performance real-time user database syncer
   function syncUserData(userId) {
     const userRef = firestoreInstance.collection('users').doc(userId);
     
@@ -296,7 +308,6 @@
         state.profile = profileDoc.data();
         applyTheme();
       } else {
-        // Save initial default profile
         state.profile = {
           name: currentUser.displayName || 'Saurabh Pandey',
           currency: 'INR',
@@ -310,7 +321,6 @@
       if (catDoc.exists) {
         state.categories = catDoc.data();
       } else {
-        // Initialize defaults
         state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
         userRef.collection('metadata').doc('categories').set(state.categories).catch(err => console.error("Error setting categories:", err));
       }
@@ -339,10 +349,7 @@
         });
       }
 
-      // Preprocess transaction dates for rapid calculations and sorting
       preprocessTransactionDates();
-
-      // Finished syncing, boot display!
       triggerViewRender('dashboard');
     }).catch(err => {
       console.error("Error syncing user data from cloud:", err);
@@ -353,7 +360,6 @@
 
   function seedDefaultTransactionsToFirestore(userId) {
     const today = new Date();
-    const currentYear = today.getFullYear();
     const mockTransactions = [];
     let idCounter = 1;
 
@@ -373,7 +379,6 @@
       });
     }
 
-    // Previous Month Mocking
     addMock('income', 'Salary', 80000, 'Monthly Salary', 'Bank Transfer', 45);
     addMock('income', 'Freelance', 12000, 'UI/UX Design Consultation', 'UPI / Wallet', 38);
     addMock('expense', 'Rent & Bills', 22000, 'House Rent', 'Bank Transfer', 44);
@@ -384,7 +389,6 @@
     addMock('expense', 'Transportation', 3500, 'Monthly Fuel', 'Cash', 42);
     addMock('expense', 'Entertainment', 2500, 'Movie & Drinks', 'Credit Card', 37);
 
-    // Current Month Mocking
     addMock('income', 'Salary', 80000, 'Monthly Salary', 'Bank Transfer', 15);
     addMock('income', 'Freelance', 15000, 'Frontend Development Gig', 'Bank Transfer', 8);
     addMock('expense', 'Rent & Bills', 22000, 'House Rent', 'Bank Transfer', 14);
@@ -398,7 +402,6 @@
     state.transactions = mockTransactions;
     preprocessTransactionDates();
     
-    // Batch write to Firestore for high performance
     const batch = firestoreInstance.batch();
     const txCollectionRef = firestoreInstance.collection('users').doc(userId).collection('transactions');
 
@@ -490,7 +493,6 @@
     txPagination.currentPage = 1;
     txPagination.filteredList = [];
     
-    // Reset inputs
     document.getElementById('auth-email-input').value = '';
     document.getElementById('auth-password-input').value = '';
     document.getElementById('auth-submit-btn').disabled = false;
@@ -519,7 +521,6 @@
     return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
-  // Flash UI notifications
   function showNotification(message, type = 'success') {
     const banner = document.getElementById('notification-banner');
     const text = document.getElementById('notification-text');
@@ -540,7 +541,6 @@
     iconWrapper.innerHTML = iconHTML;
 
     lucide.createIcons({ root: banner });
-
     banner.classList.add('active');
 
     setTimeout(() => {
@@ -548,7 +548,6 @@
     }, 3500);
   }
 
-  // Apply Theme Hues and Light/Dark values globally
   function applyTheme() {
     const root = document.documentElement;
     root.setAttribute('data-theme', state.profile.themeMode);
@@ -603,7 +602,6 @@
       });
     });
 
-    // Custom view trigger bindings
     document.getElementById('dashboard-view-all-transactions').addEventListener('click', () => {
       triggerViewClick('transactions');
     });
@@ -621,7 +619,6 @@
   }
 
   function triggerViewRender(viewName) {
-    // Refresh Welcome text if loaded
     document.getElementById('welcome-title').textContent = `Hello, ${state.profile.name.split(' ')[0]}`;
 
     switch (viewName) {
@@ -645,7 +642,6 @@
     }
   }
 
-  // --- Data Calculations ---
   function getTransactionsForMonth(date, transactionsList = state.transactions) {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -702,7 +698,6 @@
 
     renderRecentTransactionsList();
     renderActiveBudgetsList();
-
     renderDashboardCharts();
 
     lucide.createIcons();
@@ -1894,7 +1889,6 @@
       showNotification('Transaction recorded successfully.', 'success');
     }
 
-    // Sync to Cloud
     if (txObj) {
       const parts = txObj.date.split('-');
       if (parts.length === 3) {
@@ -1905,7 +1899,6 @@
       writeTransactionToCloud(txObj);
     }
 
-    // Budget exceeded alert trigger
     if (typeVal === 'expense' && state.budgets[catVal] !== undefined) {
       const budgetLimit = state.budgets[catVal];
       const today = new Date(dateVal);
@@ -1932,10 +1925,7 @@
   function deleteTransaction(id) {
     if (confirm('Are you sure you want to delete this transaction record?')) {
       state.transactions = state.transactions.filter(t => t.id !== id);
-      
-      // Delete from cloud
       deleteTransactionFromCloud(id);
-      
       showNotification('Transaction deleted.', 'warning');
       
       const currentActiveView = document.querySelector('.nav-item.active').getAttribute('data-view');
@@ -1974,8 +1964,6 @@
     }
 
     state.budgets[cat] = amount;
-    
-    // Sync to cloud
     syncBudgetsToCloud();
 
     closeAllModals();
@@ -1986,8 +1974,6 @@
   function deleteBudget(cat) {
     if (confirm(`Do you want to clear your monthly budget limit for "${cat}"?`)) {
       delete state.budgets[cat];
-      
-      // Sync to cloud
       syncBudgetsToCloud();
 
       renderBudgetsAndGoals();
@@ -2072,7 +2058,6 @@
       showNotification('Savings goal created successfully.', 'success');
     }
 
-    // Sync to Cloud
     if (goalObj) {
       writeGoalToCloud(goalObj);
     }
@@ -2084,8 +2069,6 @@
   function deleteGoal(id) {
     if (confirm('Delete this savings goal?')) {
       state.goals = state.goals.filter(g => g.id !== id);
-      
-      // Delete from cloud
       deleteGoalFromCloud(id);
 
       renderBudgetsAndGoals();
@@ -2144,7 +2127,6 @@
       showNotification(`Withdrew ${formatCurrency(amount)} from ${goal.name}.`, 'success');
     }
 
-    // Sync changes to cloud
     writeGoalToCloud(goal);
 
     closeAllModals();
@@ -2167,7 +2149,6 @@
     const cur = state.profile.currency;
     let csvContent = `Date,Description,Category,Type,Payment Method,Amount (${cur})\n`;
 
-    // Calculate Totals
     let totalIncome = 0;
     let totalExpense = 0;
     txs.forEach(t => {
@@ -2186,7 +2167,6 @@
       csvContent += `"${t.date}","${cleanDesc}","${t.category}","${t.type}","${t.method}",${t.amount}\n`;
     });
 
-    // Append calculated totals summary at the end
     csvContent += `\n`;
     csvContent += `"Summary","","","","",""\n`;
     csvContent += `"Total Income","","","","",${totalIncome}\n`;
@@ -2217,7 +2197,6 @@
 
     const curSymbol = getCurrencySymbol();
 
-    // Calculate Totals
     let totalIncome = 0;
     let totalExpense = 0;
     txs.forEach(t => {
@@ -2229,8 +2208,7 @@
     });
     const netBalance = totalIncome - totalExpense;
 
-    // Premium PDF Header / Branding
-    doc.setFillColor(15, 23, 42); // slate 900
+    doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 210, 40, 'F');
 
     doc.setTextColor(255, 255, 255);
@@ -2246,16 +2224,14 @@
     const dateStr = new Date().toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' });
     doc.text(`Generated on: ${dateStr}`, 140, 25);
 
-    // Summary Totals Section
     doc.setTextColor(15, 23, 42);
     doc.setFont("Helvetica", "bold");
     doc.setFontSize(14);
     doc.text("Financial Summary", 15, 55);
 
-    // Total Income Box
-    doc.setFillColor(240, 253, 244); // light green
+    doc.setFillColor(240, 253, 244);
     doc.rect(15, 62, 55, 22, 'F');
-    doc.setDrawColor(16, 185, 129); // emerald
+    doc.setDrawColor(16, 185, 129);
     doc.rect(15, 62, 55, 22, 'D');
     doc.setFont("Helvetica", "normal");
     doc.setFontSize(9);
@@ -2265,10 +2241,9 @@
     doc.setFontSize(12);
     doc.text(formatCurrency(totalIncome), 20, 78);
 
-    // Total Expenses Box
-    doc.setFillColor(254, 242, 242); // light red
+    doc.setFillColor(254, 242, 242);
     doc.rect(77, 62, 55, 22, 'F');
-    doc.setDrawColor(239, 68, 68); // rose
+    doc.setDrawColor(239, 68, 68);
     doc.rect(77, 62, 55, 22, 'D');
     doc.setFont("Helvetica", "normal");
     doc.setFontSize(9);
@@ -2278,10 +2253,9 @@
     doc.setFontSize(12);
     doc.text(formatCurrency(totalExpense), 82, 78);
 
-    // Net Balance Box
-    doc.setFillColor(240, 249, 255); // light blue
+    doc.setFillColor(240, 249, 255);
     doc.rect(140, 62, 55, 22, 'F');
-    doc.setDrawColor(59, 130, 246); // blue
+    doc.setDrawColor(59, 130, 246);
     doc.rect(140, 62, 55, 22, 'D');
     doc.setFont("Helvetica", "normal");
     doc.setFontSize(9);
@@ -2292,7 +2266,6 @@
     doc.setTextColor(netBalance >= 0 ? 30 : 153, netBalance >= 0 ? 58 : 27, netBalance >= 0 ? 138 : 27);
     doc.text(formatCurrency(netBalance), 145, 78);
 
-    // Draw Transactions Table using autoTable
     const columns = [
       { header: 'Date', dataKey: 'date' },
       { header: 'Description', dataKey: 'description' },
@@ -2360,16 +2333,13 @@
           state = importedState;
           preprocessTransactionDates();
           
-          // Write whole batch to Firestore
           if (currentUser) {
             const userRef = firestoreInstance.collection('users').doc(currentUser.uid);
             userRef.set(state.profile);
             userRef.collection('metadata').doc('categories').set(state.categories);
             userRef.collection('metadata').doc('budgets').set(state.budgets);
             
-            // Rewrite transactions
             state.transactions.forEach(t => writeTransactionToCloud(t));
-            // Rewrite goals
             state.goals.forEach(g => writeGoalToCloud(g));
           }
 
@@ -2445,7 +2415,6 @@
     document.getElementById('theme-toggle-btn').addEventListener('click', () => {
       state.profile.themeMode = state.profile.themeMode === 'light' ? 'dark' : 'light';
       
-      // Update cloud profile settings
       if (currentUser) {
         firestoreInstance.collection('users').doc(currentUser.uid).update({
           themeMode: state.profile.themeMode
@@ -2499,7 +2468,6 @@
       state.profile.name = name;
       state.profile.currency = cur;
       
-      // Sync profile change to cloud
       if (currentUser) {
         firestoreInstance.collection('users').doc(currentUser.uid).set(state.profile);
       }
@@ -2514,7 +2482,6 @@
         const hue = parseInt(this.getAttribute('data-hue'), 10);
         state.profile.themeHue = hue;
 
-        // Sync hue changes
         if (currentUser) {
           firestoreInstance.collection('users').doc(currentUser.uid).update({
             themeHue: hue
@@ -2574,11 +2541,9 @@
         state.goals = [];
         state.categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
         
-        // Clean out cloud Collections
         if (currentUser) {
           const userRef = firestoreInstance.collection('users').doc(currentUser.uid);
           
-          // Clear subcollections
           userRef.collection('transactions').get().then(snap => {
             snap.forEach(d => d.ref.delete());
           });
@@ -2586,7 +2551,6 @@
             snap.forEach(d => d.ref.delete());
           });
 
-          // Reset settings docs
           userRef.collection('metadata').doc('categories').set(state.categories);
           userRef.collection('metadata').doc('budgets').set(state.budgets);
         }
@@ -2624,13 +2588,10 @@
 
   // --- App Initialization Loader ---
   document.addEventListener('DOMContentLoaded', () => {
-    // 1. Initial listener boots
     initNavigation();
     handlePagination();
     initEventListeners();
     initAuthFormHandlers();
-
-    // 2. Boot Firebase with embedded config
     bootFirebaseApp();
   });
 
