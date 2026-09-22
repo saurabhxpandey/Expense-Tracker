@@ -242,7 +242,11 @@
           if (!GoogleAuth) {
             throw new Error("Native Google Auth plugin is not available on this device.");
           }
-          await GoogleAuth.initialize();
+          await GoogleAuth.initialize({
+            clientId: '465045882002-0un0hd009e25f39ra3hhcn4lu6iv6sbd.apps.googleusercontent.com',
+            scopes: ['profile', 'email'],
+            grantOfflineAccess: true,
+          });
           const googleUser = await GoogleAuth.signIn();
 
           const credential = firebase.auth.GoogleAuthProvider.credential(googleUser.authentication.idToken);
