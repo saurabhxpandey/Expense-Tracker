@@ -243,7 +243,7 @@
             throw new Error("Native Google Auth plugin is not available on this device.");
           }
           await GoogleAuth.initialize({
-            clientId: '465045882002-0un0hd009e25f39ra3hhcn4lu6iv6sbd.apps.googleusercontent.com',
+            clientId: '904808012055-fl196f9nb1a4pvgequfjgv3lna376qvf.apps.googleusercontent.com',
             scopes: ['profile', 'email'],
             grantOfflineAccess: true,
           });
