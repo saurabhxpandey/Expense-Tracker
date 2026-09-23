@@ -131,6 +131,11 @@
           <button class="btn btn-secondary btn-icon" id="theme-toggle-btn" title="Toggle Theme">
             <i data-lucide="sun"></i>
           </button>
+
+          <!-- Header Sign-Out Button (Visible on Mobile/APK) -->
+          <button class="btn btn-secondary btn-icon" id="header-logout-btn" title="Sign Out / Log Out">
+            <i data-lucide="log-out"></i>
+          </button>
           
           <!-- Add Transaction Quick Trigger -->
           <button class="btn btn-primary" id="quick-add-transaction-btn">
@@ -440,6 +445,14 @@
             <div class="settings-row" style="margin-top: 1rem;">
               <button class="btn btn-primary" id="save-profile-settings-btn" style="align-self: flex-start;">
                 Save Profile Changes
+              </button>
+            </div>
+
+            <div class="settings-row" style="margin-top: 1.5rem; border-top: 1px solid var(--border-glass); padding-top: 1.25rem;">
+              <label>Account Action</label>
+              <button class="btn btn-danger" id="settings-logout-btn" style="margin-top: 0.5rem; align-self: flex-start; display: inline-flex; align-items: center; gap: 0.5rem;">
+                <i data-lucide="log-out"></i>
+                <span>Sign Out / Log Out</span>
               </button>
             </div>
           </div>

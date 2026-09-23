@@ -261,12 +261,23 @@
       }
     });
 
-    // Sidebar sign-out button
-    document.getElementById('sidebar-logout-btn').addEventListener('click', () => {
+    // Sign-out buttons (Sidebar, Header on mobile, and Settings page)
+    const handleSignOut = () => {
       authInstance.signOut()
         .then(() => {
           showNotification('Logged out successfully.', 'info');
+        })
+        .catch((err) => {
+          console.error("Sign out error:", err);
+          showNotification('Error signing out: ' + (err.message || err), 'error');
         });
+    };
+
+    ['sidebar-logout-btn', 'header-logout-btn', 'settings-logout-btn'].forEach(id => {
+      const btn = document.getElementById(id);
+      if (btn) {
+        btn.addEventListener('click', handleSignOut);
+      }
     });
   }
 
