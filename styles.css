@@ -70,7 +70,12 @@
   --shadow-lg: 0 12px 40px 0 rgba(0, 0, 0, 0.4);
 }
 
-/* Reset and Base Styles */
+html, body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -84,6 +89,7 @@ body {
   background-color: var(--bg-color);
   color: var(--text-primary);
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   display: flex;
   overflow-x: hidden;
   transition: var(--theme-transition);
@@ -636,12 +642,8 @@ header {
   display: flex;
   gap: 0.25rem;
   margin-left: 0.75rem;
-  opacity: 0;
-  transition: opacity 0.2s ease;
-}
-
-.transaction-item:hover .item-actions {
   opacity: 1;
+  transition: opacity 0.2s ease;
 }
 
 .action-btn-small {
@@ -1206,13 +1208,14 @@ select.input-field-noicon {
   background: rgba(0, 0, 0, 0.6);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 1000;
+  z-index: 10000;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.3s ease;
+  padding: 1rem;
 }
 
 .modal-overlay.active {
@@ -1223,15 +1226,19 @@ select.input-field-noicon {
 .modal-content {
   width: 100%;
   max-width: 500px;
+  max-height: calc(90vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
   background: var(--bg-glass);
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border-glass-focus);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  padding: 2rem;
+  padding: 1.75rem;
   transform: translateY(20px);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
 }
 
 .modal-overlay.active .modal-content {
@@ -1242,7 +1249,8 @@ select.input-field-noicon {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1.25rem;
+  flex-shrink: 0;
 }
 
 .modal-title {
@@ -1271,6 +1279,10 @@ select.input-field-noicon {
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  padding-right: 0.25rem;
 }
 
 .form-group {
@@ -1818,52 +1830,135 @@ button,
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
-/* --- Transactions Mobile Responsive Fix --- */
+/* --- Mobile & Android Capacitor Responsive Fixes --- */
 
-/* 1. Table wrapper ko touch-scrollable banana */
-.table-responsive, 
-.transactions-table-container,
-#view-transactions .glass-panel {
+/* 1. Table & Container Touch-Scrollable Styling */
+.table-container {
   width: 100% !important;
   max-width: 100% !important;
   overflow-x: auto !important;
   -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+  margin-top: 1rem;
 }
 
-/* 2. Mobile screen adjustments (768px se neeche) */
+.transactions-table {
+  width: 100% !important;
+  min-width: 560px !important;
+  border-collapse: collapse;
+}
+
+/* 2. Responsive Mobile Styles */
 @media screen and (max-width: 768px) {
-  /* Filters aur Search bar ko vertically stack karo */
-  .filter-controls,
-  .tx-filters-container,
-  #view-transactions .toolbar {
+  body {
+    padding-bottom: calc(75px + env(safe-area-inset-bottom, 0px));
+  }
+
+  aside {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    height: calc(65px + env(safe-area-inset-bottom, 0px)) !important;
+    padding: 0 0.5rem env(safe-area-inset-bottom, 0px) 0.5rem !important;
+    z-index: 9999 !important;
+    background: rgba(15, 23, 42, 0.96) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border-glass) !important;
+  }
+
+  main {
+    margin-left: 0 !important;
+    padding: 1rem !important;
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px)) !important;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)) !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+    overflow-x: hidden !important;
+  }
+
+  .filters-bar {
     flex-direction: column !important;
     align-items: stretch !important;
     gap: 0.75rem !important;
+    width: 100% !important;
   }
 
-  .filter-controls select,
-  .filter-controls input,
-  #tx-search-input {
+  .search-input-wrapper,
+  .filters-bar select,
+  .date-range-group,
+  .filters-bar .btn {
     width: 100% !important;
     min-width: 0 !important;
   }
 
-  /* Table ke extra columns hide karke screen clean karo */
-  #transactions-table-body td, 
-  #transactions-table thead th {
-    padding: 0.6rem 0.4rem !important;
-    font-size: 0.8rem !important;
+  .date-range-group {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 0.5rem !important;
+  }
+
+  .date-range-group input {
+    flex: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .transactions-table th, 
+  .transactions-table td {
+    padding: 0.65rem 0.5rem !important;
+    font-size: 0.82rem !important;
     white-space: nowrap;
   }
 
-  /* Payment method wala column choti screen par hide kar sakte ho taaki table na phaile */
-  #transactions-table thead th:nth-child(4),
-  #transactions-table-body td:nth-child(4) {
-    display: none;
+  .pagination-container {
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 0.75rem !important;
+    text-align: center !important;
   }
 
-  /* Action buttons ka size adjust karo */
-  .action-btn-small {
-    padding: 0.35rem !important;
+  .pagination-buttons {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .transaction-item {
+    padding: 0.75rem 0.85rem !important;
+    gap: 0.5rem !important;
+  }
+
+  .item-category-icon {
+    width: 36px !important;
+    height: 36px !important;
+    margin-right: 0.5rem !important;
+    flex-shrink: 0 !important;
+  }
+
+  .item-title {
+    font-size: 0.88rem !important;
+  }
+
+  .item-meta {
+    font-size: 0.7rem !important;
+    flex-wrap: wrap !important;
+    gap: 0.25rem !important;
+  }
+
+  .item-amount {
+    font-size: 0.95rem !important;
+  }
+
+  .modal-overlay {
+    padding: 0.75rem !important;
+  }
+
+  .modal-content {
+    padding: 1.25rem !important;
+    border-radius: var(--radius-md) !important;
   }
 }
