@@ -2590,15 +2590,14 @@
       .replace(/'/g, '&#39;');
   }
 
-  // --- App Initialization Loader ---
-  document.addEventListener('DOMContentLoaded', () => {
+ document.addEventListener('DOMContentLoaded', () => {
     initNavigation();
     handlePagination();
     initEventListeners();
     initAuthFormHandlers();
     bootFirebaseApp();
 
-    // Native Android Hardware Back Button Handler yahan hona chahiye:
+    // Native Android Hardware Back Button Handler
     if (window.Capacitor && window.Capacitor.isNativePlatform()) {
       const { App } = window.Capacitor.Plugins;
       if (App) {
@@ -2623,3 +2622,5 @@
       }
     }
   });
+
+})();
