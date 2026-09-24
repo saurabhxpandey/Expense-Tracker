@@ -1685,27 +1685,33 @@ select.input-field-noicon {
   align-items: center;
   justify-content: center;
   gap: 0.75rem;
-  padding: 0.85rem;
+  padding: 0.95rem 1.25rem;
   background: var(--bg-glass-hover);
-  border: 1px solid var(--border-glass);
+  border: 1px solid var(--border-glass-focus);
   color: var(--text-primary);
   border-radius: var(--radius-md);
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 1rem;
   cursor: pointer;
-  transition: var(--theme-transition);
+  transition: all 0.2s ease-in-out;
+  box-shadow: var(--shadow-sm);
   z-index: 1;
 }
 
 .btn-google-signin:hover {
   background: var(--bg-glass-active);
-  border-color: var(--border-glass-focus);
-  transform: translateY(-1px);
+  border-color: var(--accent-color);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.btn-google-signin:active {
+  transform: translateY(0);
 }
 
 .btn-google-signin svg {
-  width: 18px;
-  height: 18px;
+  width: 22px;
+  height: 22px;
 }
 
 .auth-divider {

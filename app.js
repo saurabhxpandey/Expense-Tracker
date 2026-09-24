@@ -169,72 +169,72 @@
   }
 
   function initAuthFormHandlers() {
-    const emailInput = document.getElementById('auth-email-input');
-    const passwordInput = document.getElementById('auth-password-input');
-    const submitBtn = document.getElementById('auth-submit-btn');
     const googleBtn = document.getElementById('auth-google-btn');
     const errorBox = document.getElementById('auth-error-box');
 
-    // Switch between Login and Register tabs
+    // Switch between Login and Register tabs (if present)
     const tabLogin = document.getElementById('tab-login-btn');
     const tabRegister = document.getElementById('tab-register-btn');
+    if (tabLogin && tabRegister) {
+      tabLogin.addEventListener('click', () => {
+        authMode = 'login';
+        tabLogin.classList.add('active');
+        tabRegister.classList.remove('active');
+        const titleEl = document.getElementById('auth-main-title');
+        if (titleEl) titleEl.textContent = 'Welcome to Aura';
+        if (errorBox) errorBox.style.display = 'none';
+      });
 
-    tabLogin.addEventListener('click', () => {
-      authMode = 'login';
-      tabLogin.classList.add('active');
-      tabRegister.classList.remove('active');
-      document.getElementById('auth-main-title').textContent = 'Welcome to Aura';
-      document.getElementById('auth-main-subtitle').textContent = 'Sign in to track your metrics and goals.';
-      submitBtn.textContent = 'Log In';
-      errorBox.style.display = 'none';
-    });
+      tabRegister.addEventListener('click', () => {
+        authMode = 'register';
+        tabRegister.classList.add('active');
+        tabLogin.classList.remove('active');
+        const titleEl = document.getElementById('auth-main-title');
+        if (titleEl) titleEl.textContent = 'Create Aura Account';
+        if (errorBox) errorBox.style.display = 'none';
+      });
+    }
 
-    tabRegister.addEventListener('click', () => {
-      authMode = 'register';
-      tabRegister.classList.add('active');
-      tabLogin.classList.remove('active');
-      document.getElementById('auth-main-title').textContent = 'Create Aura Account';
-      document.getElementById('auth-main-subtitle').textContent = 'Start syncing your finances to the cloud.';
-      submitBtn.textContent = 'Register Account';
-      errorBox.style.display = 'none';
-    });
+    // Form submit listener (if present)
+    const submitBtn = document.getElementById('auth-submit-btn');
+    const emailInput = document.getElementById('auth-email-input');
+    const passwordInput = document.getElementById('auth-password-input');
+    if (submitBtn && emailInput && passwordInput) {
+      submitBtn.addEventListener('click', () => {
+        if (errorBox) errorBox.style.display = 'none';
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
 
-    // Form submit listener
-    submitBtn.addEventListener('click', () => {
-      errorBox.style.display = 'none';
-      const email = emailInput.value.trim();
-      const password = passwordInput.value;
+        if (!email || !password) {
+          showAuthError('Please fill out all fields.');
+          return;
+        }
 
-      if (!email || !password) {
-        showAuthError('Please fill out all fields.');
-        return;
-      }
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Processing...';
 
-      submitBtn.disabled = true;
-      submitBtn.textContent = 'Processing...';
-
-      if (authMode === 'login') {
-        authInstance.signInWithEmailAndPassword(email, password)
-          .catch(err => {
-            showAuthError(err.message);
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Log In';
-          });
-      } else {
-        authInstance.createUserWithEmailAndPassword(email, password)
-          .then((cred) => {
-            // Update auth state (triggers listener, which updates databases)
-          })
-          .catch(err => {
-            showAuthError(err.message);
-            submitBtn.disabled = false;
-            submitBtn.textContent = 'Register Account';
-          });
-      }
-    });
+        if (authMode === 'login') {
+          authInstance.signInWithEmailAndPassword(email, password)
+            .catch(err => {
+              showAuthError(err.message);
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Log In';
+            });
+        } else {
+          authInstance.createUserWithEmailAndPassword(email, password)
+            .then((cred) => {})
+            .catch(err => {
+              showAuthError(err.message);
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Register Account';
+            });
+        }
+      });
+    }
 
     // Native & Web Google Sign In
-    googleBtn.addEventListener('click', async () => {
+    if (googleBtn) {
+      googleBtn.addEventListener('click', async () => {
       errorBox.style.display = 'none';
       try {
         if (window.Capacitor && window.Capacitor.isNativePlatform()) {
@@ -508,10 +508,15 @@
     txPagination.currentPage = 1;
     txPagination.filteredList = [];
     
-    document.getElementById('auth-email-input').value = '';
-    document.getElementById('auth-password-input').value = '';
-    document.getElementById('auth-submit-btn').disabled = false;
-    document.getElementById('auth-submit-btn').textContent = 'Log In';
+    const emailEl = document.getElementById('auth-email-input');
+    if (emailEl) emailEl.value = '';
+    const passEl = document.getElementById('auth-password-input');
+    if (passEl) passEl.value = '';
+    const submitEl = document.getElementById('auth-submit-btn');
+    if (submitEl) {
+      submitEl.disabled = false;
+      submitEl.textContent = 'Log In';
+    }
   }
 
   // --- General Display Formatting ---
