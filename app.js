@@ -260,6 +260,7 @@
         showAuthError(err.message || 'Google sign-in was cancelled or failed.');
       }
     });
+  }
 
     // Sign-out buttons (Sidebar, Header on mobile, and Settings page)
     const handleSignOut = () => {
